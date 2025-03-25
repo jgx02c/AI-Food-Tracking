@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Alert } from 'react-native';
-import { Camera as ExpoCamera, CameraType } from 'expo-camera';
+import { CameraView, useCameraPermissions } from 'expo-camera';
+import type { CameraCapturedPicture } from 'expo-camera';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
@@ -17,15 +18,12 @@ type CameraScreenNavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
 const CameraScreen = () => {
   const navigation = useNavigation<CameraScreenNavigationProp>();
-  const [hasPermission, setHasPermission] = useState<boolean | null>(null);
+  const [permission, requestPermission] = useCameraPermissions();
   const [piclistKey, setPiclistKey] = useState<string | null>(null);
-  const cameraRef = useRef<ExpoCamera>(null);
+  const cameraRef = useRef<CameraView>(null);
 
   useEffect(() => {
     (async () => {
-      const { status } = await ExpoCamera.requestCameraPermissionsAsync();
-      setHasPermission(status === 'granted');
-      
       const key = await StorageService.getPiclistKey();
       setPiclistKey(key);
     })();
@@ -58,7 +56,11 @@ const CameraScreen = () => {
         base64: true,
       });
 
-      const prediction = await ImageRecognitionService.recognizeFood(photo.base64!);
+      if (!photo?.base64) {
+        throw new Error('Failed to capture photo with base64 data');
+      }
+
+      const prediction = await ImageRecognitionService.recognizeFood(photo.base64);
       
       if (prediction) {
         navigation.navigate('AddFood', { prediction });
@@ -69,7 +71,7 @@ const CameraScreen = () => {
     }
   };
 
-  if (hasPermission === null) {
+  if (!permission) {
     return (
       <SafeAreaView style={styles.safeArea} edges={['top']}>
         <View style={styles.container}>
@@ -79,16 +81,16 @@ const CameraScreen = () => {
     );
   }
 
-  if (hasPermission === false) {
+  if (!permission.granted) {
     return (
       <SafeAreaView style={styles.safeArea} edges={['top']}>
         <View style={styles.container}>
           <Text style={styles.text}>No access to camera</Text>
           <TouchableOpacity
             style={styles.button}
-            onPress={() => navigation.navigate('Settings')}
+            onPress={requestPermission}
           >
-            <Text style={styles.buttonText}>Go to Settings</Text>
+            <Text style={styles.buttonText}>Grant Permission</Text>
           </TouchableOpacity>
         </View>
       </SafeAreaView>
@@ -98,10 +100,10 @@ const CameraScreen = () => {
   return (
     <SafeAreaView style={styles.safeArea} edges={['top']}>
       <View style={styles.container}>
-        <ExpoCamera
+        <CameraView
           ref={cameraRef}
           style={styles.camera}
-          type={CameraType.back}
+          facing="back"
         >
           <View style={styles.overlay}>
             <View style={styles.captureButtonContainer}>
@@ -113,7 +115,7 @@ const CameraScreen = () => {
               </TouchableOpacity>
             </View>
           </View>
-        </ExpoCamera>
+        </CameraView>
       </View>
     </SafeAreaView>
   );

@@ -6,7 +6,7 @@ export type MuscleGroup =
   | 'triceps'
   | 'legs'
   | 'core'
-  | 'fullBody'
+  | 'full-body'
   | 'cardio';
 
 export type Equipment = 
@@ -40,12 +40,22 @@ export interface ExerciseSet {
   notes?: string;
 }
 
+export interface WorkoutSet {
+  reps: number;
+  weight?: number; // Target weight
+  actualWeight?: number; // Actual weight used
+  actualReps?: number; // Actual reps performed
+  completed: boolean;
+  isFailure?: boolean; // Whether the set was completed to failure
+  notes?: string; // Optional notes about the set
+}
+
 export interface WorkoutExercise {
   exerciseId: string;
   name: string;
-  sets: ExerciseSet[];
-  notes?: string;
+  sets: WorkoutSet[];
   restTime: number; // in seconds
+  notes?: string; // Optional notes about the exercise
 }
 
 export interface WorkoutTemplate {
@@ -64,6 +74,11 @@ export interface ActiveWorkout {
   startTime: Date;
   endTime?: Date;
   exercises: WorkoutExercise[];
-  notes?: string;
   status: 'inProgress' | 'completed' | 'cancelled';
+  notes?: string; // Optional notes about the workout
+}
+
+export interface WorkoutSession extends ActiveWorkout {
+  date: string;
+  duration: number; // in seconds
 } 

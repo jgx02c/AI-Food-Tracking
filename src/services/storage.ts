@@ -9,6 +9,8 @@ const STORAGE_KEYS = {
   USER_GOALS: 'user_goals',
 };
 
+const COMPLETED_WORKOUTS_KEY = '@completed_workouts';
+
 interface UserGoals {
   weight: string;
   targetWeight: string;
@@ -64,6 +66,14 @@ export interface UserSettings {
   weightGoal: number;
 }
 
+export interface WorkoutEntry {
+  date: string;
+  name: string;
+  duration: number;
+  calories: number;
+  type: 'workout';
+}
+
 export const StorageService = {
   // Workout Templates
   async getWorkoutTemplates(): Promise<WorkoutTemplate[]> {
@@ -88,7 +98,14 @@ export const StorageService = {
   async getActiveWorkout(): Promise<ActiveWorkout | null> {
     try {
       const workout = await AsyncStorage.getItem(STORAGE_KEYS.ACTIVE_WORKOUT);
-      return workout ? JSON.parse(workout) : null;
+      if (!workout) return null;
+      
+      const parsedWorkout = JSON.parse(workout);
+      return {
+        ...parsedWorkout,
+        startTime: new Date(parsedWorkout.startTime),
+        endTime: parsedWorkout.endTime ? new Date(parsedWorkout.endTime) : undefined,
+      };
     } catch (error) {
       console.error('Error getting active workout:', error);
       return null;
@@ -97,11 +114,17 @@ export const StorageService = {
 
   async saveActiveWorkout(workout: ActiveWorkout | null): Promise<void> {
     try {
-      if (workout) {
-        await AsyncStorage.setItem(STORAGE_KEYS.ACTIVE_WORKOUT, JSON.stringify(workout));
-      } else {
+      if (!workout) {
         await AsyncStorage.removeItem(STORAGE_KEYS.ACTIVE_WORKOUT);
+        return;
       }
+      
+      const workoutToSave = {
+        ...workout,
+        startTime: workout.startTime.toISOString(),
+        endTime: workout.endTime?.toISOString(),
+      };
+      await AsyncStorage.setItem(STORAGE_KEYS.ACTIVE_WORKOUT, JSON.stringify(workoutToSave));
     } catch (error) {
       console.error('Error saving active workout:', error);
     }
@@ -236,6 +259,55 @@ export const StorageService = {
       await AsyncStorage.setItem(STORAGE_KEYS.FOOD_HISTORY, JSON.stringify(settings));
     } catch (error) {
       console.error('Error saving user settings:', error);
+    }
+  },
+
+  async saveCompletedWorkout(workout: ActiveWorkout): Promise<void> {
+    try {
+      const completedWorkouts = await this.getCompletedWorkouts();
+      const workoutToSave = {
+        ...workout,
+        startTime: workout.startTime.toISOString(),
+        endTime: workout.endTime?.toISOString(),
+      } as unknown as ActiveWorkout; // Type assertion needed for date conversion
+      completedWorkouts.push(workoutToSave);
+      await AsyncStorage.setItem(COMPLETED_WORKOUTS_KEY, JSON.stringify(completedWorkouts));
+    } catch (error) {
+      console.error('Error saving completed workout:', error);
+      throw error;
+    }
+  },
+
+  async getCompletedWorkouts(): Promise<ActiveWorkout[]> {
+    try {
+      const workouts = await AsyncStorage.getItem(COMPLETED_WORKOUTS_KEY);
+      if (!workouts) return [];
+      
+      const parsedWorkouts = JSON.parse(workouts);
+      return parsedWorkouts.map((workout: any) => ({
+        ...workout,
+        startTime: new Date(workout.startTime),
+        endTime: workout.endTime ? new Date(workout.endTime) : undefined,
+      }));
+    } catch (error) {
+      console.error('Error getting completed workouts:', error);
+      return [];
+    }
+  },
+
+  async getWorkoutHistory(): Promise<WorkoutEntry[]> {
+    try {
+      const completedWorkouts = await this.getCompletedWorkouts();
+      return completedWorkouts.map(workout => ({
+        date: workout.startTime.toISOString(),
+        name: workout.template.name,
+        duration: Math.round((new Date(workout.endTime || new Date()).getTime() - new Date(workout.startTime).getTime()) / 60000),
+        calories: workout.template.calories || 0,
+        type: 'workout' as const
+      }));
+    } catch (error) {
+      console.error('Error getting workout history:', error);
+      return [];
     }
   },
 }; 

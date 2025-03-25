@@ -8,6 +8,8 @@ import {
   Platform,
   StatusBar,
   Modal,
+  TextInput,
+  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { WorkoutTemplate, ActiveWorkout } from '../types/workout';
@@ -15,6 +17,8 @@ import { exercises } from '../data/exercises';
 import WorkoutTimer from '../components/WorkoutTimer';
 import WorkoutTemplateEditor from '../components/WorkoutTemplateEditor';
 import { StorageService } from '../services/storage';
+import { Ionicons } from '@expo/vector-icons';
+import WorkoutCompletionScreen from '../components/WorkoutCompletionScreen';
 
 // Mock data for demonstration
 const mockTemplates: WorkoutTemplate[] = [
@@ -83,6 +87,7 @@ const WorkoutScreen = () => {
   const [showTemplateEditor, setShowTemplateEditor] = useState(false);
   const [editingTemplate, setEditingTemplate] = useState<WorkoutTemplate | undefined>();
   const [isTimerPaused, setIsTimerPaused] = useState(false);
+  const [showCompletionScreen, setShowCompletionScreen] = useState(false);
 
   useEffect(() => {
     loadTemplates();
@@ -122,7 +127,15 @@ const WorkoutScreen = () => {
     if (!activeWorkout) return;
 
     const updatedExercises = [...activeWorkout.exercises];
-    updatedExercises[exerciseIndex].sets[setIndex].completed = true;
+    const set = updatedExercises[exerciseIndex].sets[setIndex];
+    
+    // Toggle completion status
+    set.completed = !set.completed;
+    
+    // If completing the set and no actual weight is set, use the target weight
+    if (set.completed && !set.actualWeight && set.weight) {
+      set.actualWeight = set.weight;
+    }
 
     const updatedWorkout = {
       ...activeWorkout,
@@ -130,6 +143,106 @@ const WorkoutScreen = () => {
     };
     setActiveWorkout(updatedWorkout);
     await StorageService.saveActiveWorkout(updatedWorkout);
+  };
+
+  const markSetAsFailure = async (exerciseIndex: number, setIndex: number) => {
+    if (!activeWorkout) return;
+
+    const updatedExercises = [...activeWorkout.exercises];
+    const set = updatedExercises[exerciseIndex].sets[setIndex];
+    
+    // Toggle failure status
+    set.isFailure = !set.isFailure;
+    
+    // If marking as failure, also mark as completed
+    if (set.isFailure) {
+      set.completed = true;
+    }
+
+    const updatedWorkout = {
+      ...activeWorkout,
+      exercises: updatedExercises,
+    };
+    setActiveWorkout(updatedWorkout);
+    await StorageService.saveActiveWorkout(updatedWorkout);
+  };
+
+  const updateSetWeight = async (exerciseIndex: number, setIndex: number, weight: number) => {
+    if (!activeWorkout) return;
+
+    const updatedExercises = [...activeWorkout.exercises];
+    updatedExercises[exerciseIndex].sets[setIndex].actualWeight = weight;
+
+    const updatedWorkout = {
+      ...activeWorkout,
+      exercises: updatedExercises,
+    };
+    setActiveWorkout(updatedWorkout);
+    await StorageService.saveActiveWorkout(updatedWorkout);
+  };
+
+  const updateSetReps = async (exerciseIndex: number, setIndex: number, reps: number) => {
+    if (!activeWorkout) return;
+
+    const updatedExercises = [...activeWorkout.exercises];
+    updatedExercises[exerciseIndex].sets[setIndex].actualReps = reps;
+
+    const updatedWorkout = {
+      ...activeWorkout,
+      exercises: updatedExercises,
+    };
+    setActiveWorkout(updatedWorkout);
+    await StorageService.saveActiveWorkout(updatedWorkout);
+  };
+
+  const addSet = async (exerciseIndex: number) => {
+    if (!activeWorkout) return;
+
+    const updatedExercises = [...activeWorkout.exercises];
+    const lastSet = updatedExercises[exerciseIndex].sets[updatedExercises[exerciseIndex].sets.length - 1];
+    
+    updatedExercises[exerciseIndex].sets.push({
+      reps: lastSet.reps,
+      weight: lastSet.weight,
+      completed: false,
+    });
+
+    const updatedWorkout = {
+      ...activeWorkout,
+      exercises: updatedExercises,
+    };
+    setActiveWorkout(updatedWorkout);
+    await StorageService.saveActiveWorkout(updatedWorkout);
+  };
+
+  const deleteSet = async (exerciseIndex: number, setIndex: number) => {
+    if (!activeWorkout) return;
+
+    Alert.alert(
+      'Delete Set',
+      'Are you sure you want to delete this set?',
+      [
+        {
+          text: 'Cancel',
+          style: 'cancel',
+        },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            const updatedExercises = [...activeWorkout.exercises];
+            updatedExercises[exerciseIndex].sets.splice(setIndex, 1);
+
+            const updatedWorkout = {
+              ...activeWorkout,
+              exercises: updatedExercises,
+            };
+            setActiveWorkout(updatedWorkout);
+            await StorageService.saveActiveWorkout(updatedWorkout);
+          },
+        },
+      ]
+    );
   };
 
   const finishWorkout = async () => {
@@ -142,6 +255,12 @@ const WorkoutScreen = () => {
     };
     setActiveWorkout(completedWorkout);
     await StorageService.saveActiveWorkout(completedWorkout);
+    await StorageService.saveCompletedWorkout(completedWorkout);
+    setShowCompletionScreen(true);
+  };
+
+  const handleWorkoutCompletion = () => {
+    setShowCompletionScreen(false);
     setShowTemplates(true);
   };
 
@@ -201,65 +320,201 @@ const WorkoutScreen = () => {
               </TouchableOpacity>
             </View>
             <ScrollView style={styles.templatesContainer}>
-              {templates.map((template) => (
-                <View key={template.id} style={styles.templateCard}>
-                  <View style={styles.templateHeader}>
-                    <Text style={styles.templateName}>{template.name}</Text>
-                    <View style={styles.templateActions}>
-                      <TouchableOpacity
-                        style={styles.actionButton}
-                        onPress={() => handleEditTemplate(template)}
-                      >
-                        <Text style={styles.actionButtonText}>Edit</Text>
-                      </TouchableOpacity>
-                      <TouchableOpacity
-                        style={[styles.actionButton, styles.deleteButton]}
-                        onPress={() => handleDeleteTemplate(template.id)}
-                      >
-                        <Text style={[styles.actionButtonText, styles.deleteButtonText]}>
-                          Delete
-                        </Text>
-                      </TouchableOpacity>
-                    </View>
-                  </View>
-                  <Text style={styles.templateDescription}>
-                    {template.description}
-                  </Text>
-                  <View style={styles.templateDetails}>
-                    <Text style={styles.detailText}>
-                      {template.exercises.length} exercises
-                    </Text>
-                    <Text style={styles.detailText}>
-                      {template.estimatedDuration} min
-                    </Text>
-                    <Text style={styles.detailText}>
-                      {template.difficulty}
-                    </Text>
-                  </View>
+              {templates.length === 0 ? (
+                <View style={styles.emptyState}>
+                  <Text style={styles.emptyStateText}>No templates yet</Text>
                   <TouchableOpacity
-                    style={styles.startButton}
-                    onPress={() => startWorkout(template)}
+                    style={styles.emptyStateButton}
+                    onPress={() => {
+                      setEditingTemplate(undefined);
+                      setShowTemplateEditor(true);
+                    }}
                   >
-                    <Text style={styles.startButtonText}>Start Workout</Text>
+                    <Text style={styles.emptyStateButtonText}>Add New Template</Text>
                   </TouchableOpacity>
                 </View>
-              ))}
+              ) : (
+                templates.map((template) => (
+                  <View key={template.id} style={styles.templateCard}>
+                    <View style={styles.templateHeader}>
+                      <Text style={styles.templateName}>{template.name}</Text>
+                      <View style={styles.templateActions}>
+                        <TouchableOpacity
+                          style={styles.actionButton}
+                          onPress={() => handleEditTemplate(template)}
+                        >
+                          <Text style={styles.actionButtonText}>Edit</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                          style={[styles.actionButton, styles.deleteButton]}
+                          onPress={() => handleDeleteTemplate(template.id)}
+                        >
+                          <Text style={[styles.actionButtonText, styles.deleteButtonText]}>
+                            Delete
+                          </Text>
+                        </TouchableOpacity>
+                      </View>
+                    </View>
+                    <Text style={styles.templateDescription}>
+                      {template.description}
+                    </Text>
+                    <View style={styles.templateDetails}>
+                      <Text style={styles.detailText}>
+                        {template.exercises.length} exercises
+                      </Text>
+                      <Text style={styles.detailText}>
+                        {template.estimatedDuration} min
+                      </Text>
+                      <Text style={styles.detailText}>
+                        {template.difficulty}
+                      </Text>
+                    </View>
+                    <TouchableOpacity
+                      style={styles.startButton}
+                      onPress={() => startWorkout(template)}
+                    >
+                      <Text style={styles.startButtonText}>Start Workout</Text>
+                    </TouchableOpacity>
+                  </View>
+                ))
+              )}
             </ScrollView>
           </>
+        ) : showCompletionScreen ? (
+          <WorkoutCompletionScreen
+            workout={activeWorkout!}
+            onFinish={handleWorkoutCompletion}
+          />
         ) : (
           <>
             <View style={styles.workoutHeader}>
-              <TouchableOpacity
-                style={styles.cancelButton}
-                onPress={cancelWorkout}
-              >
-                <Text style={styles.cancelButtonText}>Cancel</Text>
-              </TouchableOpacity>
-              <WorkoutTimer
-                onPause={() => setIsTimerPaused(true)}
-                onResume={() => setIsTimerPaused(false)}
-                onStop={cancelWorkout}
-              />
+              <View style={styles.timerContainer}>
+                <WorkoutTimer
+                  onPause={() => setIsTimerPaused(true)}
+                  onResume={() => setIsTimerPaused(false)}
+                  onStop={cancelWorkout}
+                />
+                <View style={styles.timerControls}>
+                  <TouchableOpacity
+                    style={styles.timerControlButton}
+                    onPress={() => setIsTimerPaused(!isTimerPaused)}
+                  >
+                    <Ionicons
+                      name={isTimerPaused ? 'play' : 'pause'}
+                      size={24}
+                      color="#1E4D6B"
+                    />
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.timerControlButton}
+                    onPress={cancelWorkout}
+                  >
+                    <Ionicons name="stop" size={24} color="#A67356" />
+                  </TouchableOpacity>
+                </View>
+              </View>
+            </View>
+            <ScrollView style={styles.exercisesContainer}>
+              {activeWorkout?.exercises.map((exercise, exerciseIndex) => (
+                <View key={exercise.exerciseId} style={styles.exerciseCard}>
+                  <Text style={styles.exerciseName}>{exercise.name}</Text>
+                  <View style={styles.setsList}>
+                    {exercise.sets.map((set, setIndex) => (
+                      <TouchableOpacity
+                        key={setIndex}
+                        style={styles.setRow}
+                        onLongPress={() => deleteSet(exerciseIndex, setIndex)}
+                        delayLongPress={500}
+                      >
+                        <View style={styles.setCell}>
+                          <Text style={styles.setCellText}>
+                            {set.weight ? `${set.weight}kg` : '-'}
+                          </Text>
+                        </View>
+                        <View style={styles.setCell}>
+                          <Text style={styles.setCellText}>
+                            {set.reps}
+                          </Text>
+                        </View>
+                        <View style={styles.setCell}>
+                          <TextInput
+                            style={[
+                              styles.setCellInput,
+                              set.completed && styles.completedInput
+                            ]}
+                            value={set.actualWeight?.toString() || ''}
+                            onChangeText={(value) => updateSetWeight(exerciseIndex, setIndex, parseFloat(value) || 0)}
+                            keyboardType="numeric"
+                            placeholder="-"
+                            placeholderTextColor="#829AAF"
+                            editable={!set.completed}
+                          />
+                        </View>
+                        <View style={styles.setCell}>
+                          <TextInput
+                            style={[
+                              styles.setCellInput,
+                              set.completed && styles.completedInput
+                            ]}
+                            value={set.actualReps?.toString() || ''}
+                            onChangeText={(value) => updateSetReps(exerciseIndex, setIndex, parseInt(value) || 0)}
+                            keyboardType="numeric"
+                            placeholder="-"
+                            placeholderTextColor="#829AAF"
+                            editable={!set.completed}
+                          />
+                        </View>
+                        <View style={styles.setCell}>
+                          <TouchableOpacity
+                            style={[
+                              styles.setActionButton,
+                              set.completed && styles.completedSet,
+                            ]}
+                            onPress={() => completeSet(exerciseIndex, setIndex)}
+                          >
+                            <Text
+                              style={[
+                                styles.setActionText,
+                                set.completed && styles.completedSetText,
+                              ]}
+                            >
+                              {set.completed ? '✓' : 'P'}
+                            </Text>
+                          </TouchableOpacity>
+                        </View>
+                        <View style={styles.setCell}>
+                          <TouchableOpacity
+                            style={[
+                              styles.setActionButton,
+                              styles.failureButton,
+                              set.isFailure && styles.failureSet,
+                            ]}
+                            onPress={() => markSetAsFailure(exerciseIndex, setIndex)}
+                          >
+                            <Text
+                              style={[
+                                styles.setActionText,
+                                set.isFailure && styles.failureSetText,
+                              ]}
+                            >
+                              {set.isFailure ? '✓' : 'F'}
+                            </Text>
+                          </TouchableOpacity>
+                        </View>
+                      </TouchableOpacity>
+                    ))}
+                    <TouchableOpacity
+                      style={styles.addSetButton}
+                      onPress={() => addSet(exerciseIndex)}
+                    >
+                      <Ionicons name="add-circle" size={20} color="#739E82" />
+                      <Text style={styles.addSetText}>+</Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              ))}
+            </ScrollView>
+            <View style={styles.workoutFooter}>
               <TouchableOpacity
                 style={styles.finishButton}
                 onPress={finishWorkout}
@@ -267,35 +522,6 @@ const WorkoutScreen = () => {
                 <Text style={styles.finishButtonText}>Finish Workout</Text>
               </TouchableOpacity>
             </View>
-            <ScrollView style={styles.exercisesContainer}>
-              {activeWorkout?.exercises.map((exercise, exerciseIndex) => (
-                <View key={exercise.exerciseId} style={styles.exerciseCard}>
-                  <Text style={styles.exerciseName}>{exercise.name}</Text>
-                  <View style={styles.setsContainer}>
-                    {exercise.sets.map((set, setIndex) => (
-                      <TouchableOpacity
-                        key={setIndex}
-                        style={[
-                          styles.setButton,
-                          set.completed && styles.completedSet,
-                        ]}
-                        onPress={() => completeSet(exerciseIndex, setIndex)}
-                        disabled={set.completed}
-                      >
-                        <Text
-                          style={[
-                            styles.setText,
-                            set.completed && styles.completedSetText,
-                          ]}
-                        >
-                          {set.reps} reps
-                        </Text>
-                      </TouchableOpacity>
-                    ))}
-                  </View>
-                </View>
-              ))}
-            </ScrollView>
           </>
         )}
       </View>
@@ -332,6 +558,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     padding: 16,
+    paddingBottom: 8,
   },
   title: {
     fontSize: 28,
@@ -339,12 +566,16 @@ const styles = StyleSheet.create({
     color: '#2C3D4F',
     fontFamily: Platform.OS === 'ios' ? 'System' : 'sans-serif',
     letterSpacing: -0.5,
+    flex: 1,
+    marginRight: 16,
   },
   addButton: {
     backgroundColor: '#1E4D6B',
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 8,
+    minWidth: 120,
+    alignItems: 'center',
   },
   addButtonText: {
     color: '#fff',
@@ -428,34 +659,22 @@ const styles = StyleSheet.create({
     fontFamily: Platform.OS === 'ios' ? 'System' : 'sans-serif',
   },
   workoutHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
     padding: 16,
     backgroundColor: '#fff',
     borderBottomWidth: 1,
     borderBottomColor: '#F5F5F0',
   },
-  cancelButton: {
+  timerContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  timerControls: {
+    flexDirection: 'row',
+    gap: 16,
+  },
+  timerControlButton: {
     padding: 8,
-  },
-  cancelButtonText: {
-    color: '#A67356',
-    fontSize: 16,
-    fontWeight: '600',
-    fontFamily: Platform.OS === 'ios' ? 'System' : 'sans-serif',
-  },
-  finishButton: {
-    backgroundColor: '#1E4D6B',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 8,
-  },
-  finishButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
-    fontFamily: Platform.OS === 'ios' ? 'System' : 'sans-serif',
   },
   exercisesContainer: {
     flex: 1,
@@ -479,30 +698,132 @@ const styles = StyleSheet.create({
     marginBottom: 12,
     fontFamily: Platform.OS === 'ios' ? 'System' : 'sans-serif',
   },
-  setsContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
+  setsList: {
+    marginTop: 12,
   },
-  setButton: {
-    backgroundColor: '#F5F5F0',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 8,
-    minWidth: 80,
+  setRow: {
+    flexDirection: 'row',
     alignItems: 'center',
+    backgroundColor: '#F5F5F0',
+    padding: 8,
+    borderRadius: 8,
+    marginBottom: 4,
+  },
+  setCell: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 4,
+  },
+  setCellText: {
+    fontSize: 14,
+    color: '#2C3D4F',
+    fontFamily: Platform.OS === 'ios' ? 'System' : 'sans-serif',
+  },
+  setCellInput: {
+    fontSize: 14,
+    color: '#2C3D4F',
+    fontFamily: Platform.OS === 'ios' ? 'System' : 'sans-serif',
+    textAlign: 'center',
+    backgroundColor: '#fff',
+    borderRadius: 4,
+    padding: 4,
+    width: '100%',
+  },
+  completedInput: {
+    backgroundColor: '#F5F5F0',
+    color: '#829AAF',
+  },
+  setActionButton: {
+    backgroundColor: '#F5F5F0',
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  setActionText: {
+    fontSize: 14,
+    color: '#2C3D4F',
+    fontWeight: '500',
+    fontFamily: Platform.OS === 'ios' ? 'System' : 'sans-serif',
   },
   completedSet: {
     backgroundColor: '#739E82',
   },
-  setText: {
-    color: '#2C3D4F',
-    fontSize: 14,
-    fontWeight: '500',
-    fontFamily: Platform.OS === 'ios' ? 'System' : 'sans-serif',
-  },
   completedSetText: {
     color: '#fff',
+  },
+  failureButton: {
+    backgroundColor: '#F5F5F0',
+  },
+  failureSet: {
+    backgroundColor: '#A67356',
+  },
+  failureSetText: {
+    color: '#fff',
+  },
+  addSetButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 4,
+    padding: 8,
+    backgroundColor: '#F5F5F0',
+    borderRadius: 8,
+    marginTop: 8,
+    alignSelf: 'center',
+  },
+  addSetText: {
+    fontSize: 16,
+    color: '#739E82',
+    fontWeight: '600',
+    fontFamily: Platform.OS === 'ios' ? 'System' : 'sans-serif',
+  },
+  workoutFooter: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    padding: 16,
+    backgroundColor: '#fff',
+    borderTopWidth: 1,
+    borderTopColor: '#F5F5F0',
+  },
+  finishButton: {
+    backgroundColor: '#1E4D6B',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 8,
+  },
+  finishButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
+    fontFamily: Platform.OS === 'ios' ? 'System' : 'sans-serif',
+  },
+  emptyState: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 32,
+  },
+  emptyStateText: {
+    fontSize: 18,
+    color: '#829AAF',
+    marginBottom: 16,
+    textAlign: 'center',
+    fontFamily: Platform.OS === 'ios' ? 'System' : 'sans-serif',
+  },
+  emptyStateButton: {
+    backgroundColor: '#1E4D6B',
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 8,
+  },
+  emptyStateButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
+    fontFamily: Platform.OS === 'ios' ? 'System' : 'sans-serif',
   },
 });
 

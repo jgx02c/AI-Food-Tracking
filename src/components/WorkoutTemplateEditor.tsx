@@ -49,7 +49,11 @@ const WorkoutTemplateEditor: React.FC<WorkoutTemplateEditorProps> = ({
 
   const updateExerciseSets = (index: number, sets: number) => {
     const updatedExercises = [...selectedExercises];
-    updatedExercises[index].sets = Array(sets).fill({ reps: 10, completed: false });
+    updatedExercises[index].sets = Array(sets).fill({ 
+      reps: 10, 
+      completed: false,
+      weight: 0 // Default weight
+    });
     setSelectedExercises(updatedExercises);
   };
 
@@ -58,6 +62,15 @@ const WorkoutTemplateEditor: React.FC<WorkoutTemplateEditorProps> = ({
     updatedExercises[index].sets = updatedExercises[index].sets.map(set => ({
       ...set,
       reps,
+    }));
+    setSelectedExercises(updatedExercises);
+  };
+
+  const updateExerciseWeight = (exerciseIndex: number, weight: number) => {
+    const updatedExercises = [...selectedExercises];
+    updatedExercises[exerciseIndex].sets = updatedExercises[exerciseIndex].sets.map(set => ({
+      ...set,
+      weight,
     }));
     setSelectedExercises(updatedExercises);
   };
@@ -197,6 +210,40 @@ const WorkoutTemplateEditor: React.FC<WorkoutTemplateEditorProps> = ({
                     </TouchableOpacity>
                   </View>
                 </View>
+                <View style={styles.controlGroup}>
+                  <Text style={styles.label}>Weight (kg)</Text>
+                  <View style={styles.numberInput}>
+                    <TouchableOpacity
+                      onPress={() => updateExerciseWeight(index, Math.max(0, (exercise.sets[0].weight || 0) - 2.5))}
+                      style={styles.numberButton}
+                    >
+                      <Text style={styles.numberButtonText}>-</Text>
+                    </TouchableOpacity>
+                    <TextInput
+                      style={styles.weightInput}
+                      value={exercise.sets[0].weight?.toString() || '0'}
+                      onChangeText={(value) => updateExerciseWeight(index, parseFloat(value) || 0)}
+                      keyboardType="numeric"
+                      placeholder="0"
+                      placeholderTextColor="#829AAF"
+                    />
+                    <TouchableOpacity
+                      onPress={() => updateExerciseWeight(index, (exercise.sets[0].weight || 0) + 2.5)}
+                      style={styles.numberButton}
+                    >
+                      <Text style={styles.numberButtonText}>+</Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              </View>
+              <View style={styles.setsPreview}>
+                {exercise.sets.map((set, setIndex) => (
+                  <View key={setIndex} style={styles.setPreview}>
+                    <Text style={styles.setPreviewText}>
+                      Set {setIndex + 1}: {set.reps} reps @ {set.weight}kg
+                    </Text>
+                  </View>
+                ))}
               </View>
             </View>
           ))}
@@ -428,6 +475,29 @@ const styles = StyleSheet.create({
   exerciseOptionMuscles: {
     fontSize: 12,
     color: '#829AAF',
+    fontFamily: Platform.OS === 'ios' ? 'System' : 'sans-serif',
+  },
+  weightInput: {
+    flex: 1,
+    textAlign: 'center',
+    color: '#2C3D4F',
+    fontSize: 16,
+    fontWeight: '500',
+    fontFamily: Platform.OS === 'ios' ? 'System' : 'sans-serif',
+    padding: 0,
+  },
+  setsPreview: {
+    marginTop: 12,
+    backgroundColor: '#F5F5F0',
+    borderRadius: 8,
+    padding: 8,
+  },
+  setPreview: {
+    paddingVertical: 4,
+  },
+  setPreviewText: {
+    fontSize: 14,
+    color: '#2C3D4F',
     fontFamily: Platform.OS === 'ios' ? 'System' : 'sans-serif',
   },
 });

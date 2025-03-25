@@ -1,257 +1,195 @@
-import React from 'react';
-import { View, Text, StyleSheet, StatusBar, Platform } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Calendar, DateData } from 'react-native-calendars';
-import { UserStats } from '../types';
+import { Ionicons } from '@expo/vector-icons';
+import { StorageService } from '../services/storage';
+import { WorkoutEntry, FoodEntry } from '../services/storage';
+import { format } from 'date-fns';
 
 const HistoryScreen = () => {
-  const [selectedDate, setSelectedDate] = React.useState('');
-  const [stats, setStats] = React.useState<UserStats>({
-    weight: 0,
-    goalWeight: 0,
-    dailyCalorieGoal: 0,
-    entries: {}
-  });
+  const [entries, setEntries] = useState<(WorkoutEntry | FoodEntry)[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  // Mock data for demonstration
-  const currentStreak = 5; // days
-  const bestStreak = 12; // days
-  const weeklyProgress = {
-    calories: {
-      current: 12500,
-      goal: 14000,
-    },
-    protein: {
-      current: 525,
-      goal: 600,
-    },
-    carbs: {
-      current: 875,
-      goal: 1000,
-    },
-    fat: {
-      current: 325,
-      goal: 350,
-    },
+  useEffect(() => {
+    loadHistory();
+  }, []);
+
+  const loadHistory = async () => {
+    try {
+      const [workouts, foodEntries] = await Promise.all([
+        StorageService.getWorkoutHistory(),
+        StorageService.getFoodHistory()
+      ]);
+
+      // Combine and sort entries by date
+      const allEntries = [...workouts, ...foodEntries].sort((a, b) => {
+        return new Date(b.date).getTime() - new Date(a.date).getTime();
+      });
+
+      setEntries(allEntries);
+    } catch (error) {
+      console.error('Error loading history:', error);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const markedDates = {
-    [selectedDate]: { selected: true, selectedColor: '#1E4D6B' },
-  };
+  const renderEntry = (entry: WorkoutEntry | FoodEntry) => {
+    const date = new Date(entry.date);
+    const isWorkout = 'type' in entry;
 
-  const getProgressColor = (current: number, goal: number) => {
-    const percentage = (current / goal) * 100;
-    if (percentage > 100) return '#A67356'; // Warm Cognac
-    if (percentage > 90) return '#829AAF'; // Muted Steel Blue
-    return '#739E82'; // Sage Green
+    return (
+      <TouchableOpacity 
+        key={`${isWorkout ? 'workout' : 'food'}-${entry.date}`}
+        style={styles.entryCard}
+      >
+        <View style={styles.entryHeader}>
+          <View style={styles.entryIcon}>
+            <Ionicons 
+              name={isWorkout ? 'barbell-outline' : 'restaurant-outline'} 
+              size={24} 
+              color="#1E4D6B" 
+            />
+          </View>
+          <View style={styles.entryInfo}>
+            <Text style={styles.entryTitle}>
+              {isWorkout ? entry.name : entry.foodName}
+            </Text>
+            <Text style={styles.entryDate}>
+              {format(date, 'MMM d, yyyy h:mm a')}
+            </Text>
+          </View>
+        </View>
+        {isWorkout ? (
+          <View style={styles.workoutDetails}>
+            <Text style={styles.detailText}>Duration: {entry.duration} minutes</Text>
+            <Text style={styles.detailText}>Calories: {entry.calories}</Text>
+          </View>
+        ) : (
+          <View style={styles.foodDetails}>
+            <Text style={styles.detailText}>Calories: {entry.calories}</Text>
+            <Text style={styles.detailText}>Protein: {entry.protein}g</Text>
+            <Text style={styles.detailText}>Carbs: {entry.carbs}g</Text>
+            <Text style={styles.detailText}>Fat: {entry.fat}g</Text>
+          </View>
+        )}
+      </TouchableOpacity>
+    );
   };
 
   return (
-    <SafeAreaView style={styles.safeArea} edges={['top']}>
-      <StatusBar barStyle="dark-content" backgroundColor="#F5F5F0" />
-      <View style={styles.container}>
-        <View style={styles.streakContainer}>
-          <View style={styles.streakCard}>
-            <Text style={styles.streakLabel}>Current Streak</Text>
-            <Text style={styles.streakValue}>{currentStreak} days</Text>
-          </View>
-          <View style={styles.streakCard}>
-            <Text style={styles.streakLabel}>Best Streak</Text>
-            <Text style={styles.streakValue}>{bestStreak} days</Text>
-          </View>
-        </View>
-
-        <View style={styles.weeklyProgressContainer}>
-          <Text style={styles.sectionTitle}>Weekly Progress</Text>
-          <View style={styles.progressGrid}>
-            <View style={styles.progressItem}>
-              <Text style={styles.progressLabel}>Calories</Text>
-              <Text style={[styles.progressValue, { 
-                color: getProgressColor(weeklyProgress.calories.current, weeklyProgress.calories.goal)
-              }]}>
-                {weeklyProgress.calories.current} / {weeklyProgress.calories.goal}
-              </Text>
-            </View>
-            <View style={styles.progressItem}>
-              <Text style={styles.progressLabel}>Protein</Text>
-              <Text style={[styles.progressValue, { 
-                color: getProgressColor(weeklyProgress.protein.current, weeklyProgress.protein.goal)
-              }]}>
-                {weeklyProgress.protein.current}g / {weeklyProgress.protein.goal}g
-              </Text>
-            </View>
-            <View style={styles.progressItem}>
-              <Text style={styles.progressLabel}>Carbs</Text>
-              <Text style={[styles.progressValue, { 
-                color: getProgressColor(weeklyProgress.carbs.current, weeklyProgress.carbs.goal)
-              }]}>
-                {weeklyProgress.carbs.current}g / {weeklyProgress.carbs.goal}g
-              </Text>
-            </View>
-            <View style={styles.progressItem}>
-              <Text style={styles.progressLabel}>Fat</Text>
-              <Text style={[styles.progressValue, { 
-                color: getProgressColor(weeklyProgress.fat.current, weeklyProgress.fat.goal)
-              }]}>
-                {weeklyProgress.fat.current}g / {weeklyProgress.fat.goal}g
-              </Text>
-            </View>
-          </View>
-        </View>
-
-        <Calendar
-          onDayPress={(day: DateData) => setSelectedDate(day.dateString)}
-          markedDates={markedDates}
-          theme={{
-            backgroundColor: '#F5F5F0',
-            calendarBackground: '#F5F5F0',
-            selectedDayBackgroundColor: '#1E4D6B',
-            selectedDayTextColor: '#ffffff',
-            todayTextColor: '#1E4D6B',
-            dayTextColor: '#2C3D4F',
-            textDisabledColor: '#829AAF',
-            dotColor: '#739E82',
-            arrowColor: '#1E4D6B',
-            monthTextColor: '#2C3D4F',
-            textDayFontFamily: Platform.OS === 'ios' ? 'System' : 'sans-serif',
-            textMonthFontFamily: Platform.OS === 'ios' ? 'System' : 'sans-serif',
-            textDayHeaderFontFamily: Platform.OS === 'ios' ? 'System' : 'sans-serif',
-            textDayFontWeight: '400',
-            textMonthFontWeight: '700',
-            textDayHeaderFontWeight: '600',
-            textDayFontSize: 16,
-            textMonthFontSize: 18,
-            textDayHeaderFontSize: 14,
-          }}
-        />
-        {selectedDate && (
-          <View style={styles.statsContainer}>
-            <Text style={styles.dateTitle}>{selectedDate}</Text>
-            <View style={styles.statCard}>
-              <Text style={styles.statLabel}>Total Calories</Text>
-              <Text style={styles.statValue}>
-                {stats.entries[selectedDate]?.reduce((acc, entry) => acc + entry.calories, 0) || 0}
-              </Text>
-            </View>
-          </View>
-        )}
+    <SafeAreaView style={styles.container}>
+      <View style={styles.header}>
+        <Text style={styles.title}>History</Text>
       </View>
+      <ScrollView style={styles.content}>
+        {loading ? (
+          <View style={styles.loadingContainer}>
+            <Text style={styles.loadingText}>Loading history...</Text>
+          </View>
+        ) : entries.length === 0 ? (
+          <View style={styles.emptyContainer}>
+            <Text style={styles.emptyText}>No history yet</Text>
+          </View>
+        ) : (
+          entries.map(renderEntry)
+        )}
+      </ScrollView>
     </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: '#F5F5F0',
-  },
   container: {
     flex: 1,
-    backgroundColor: '#F5F5F0',
+    backgroundColor: '#F3F4F6',
   },
-  streakContainer: {
-    flexDirection: 'row',
+  header: {
     padding: 16,
-    gap: 12,
-  },
-  streakCard: {
-    flex: 1,
     backgroundColor: '#fff',
-    padding: 16,
-    borderRadius: 16,
-    elevation: 1,
-    shadowColor: '#2C3D4F',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.06,
-    shadowRadius: 4,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E7EB',
   },
-  streakLabel: {
-    fontSize: 15,
-    color: '#829AAF',
-    marginBottom: 6,
-    fontFamily: Platform.OS === 'ios' ? 'System' : 'sans-serif',
-    fontWeight: '500',
-  },
-  streakValue: {
+  title: {
     fontSize: 24,
+    fontWeight: 'bold',
     color: '#1E4D6B',
-    fontFamily: Platform.OS === 'ios' ? 'System' : 'sans-serif',
-    fontWeight: '700',
   },
-  weeklyProgressContainer: {
+  content: {
+    flex: 1,
     padding: 16,
   },
-  sectionTitle: {
-    fontSize: 22,
-    fontWeight: '700',
-    color: '#2C3D4F',
-    marginBottom: 16,
-    fontFamily: Platform.OS === 'ios' ? 'System' : 'sans-serif',
-    letterSpacing: -0.5,
+  entryCard: {
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
   },
-  progressGrid: {
+  entryHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  entryIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#E5E7EB',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  entryInfo: {
+    flex: 1,
+  },
+  entryTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#1E4D6B',
+    marginBottom: 4,
+  },
+  entryDate: {
+    fontSize: 14,
+    color: '#829AAF',
+  },
+  workoutDetails: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  foodDetails: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 12,
+    justifyContent: 'space-between',
   },
-  progressItem: {
+  detailText: {
+    fontSize: 14,
+    color: '#4B5563',
+    marginRight: 16,
+  },
+  loadingContainer: {
     flex: 1,
-    minWidth: '45%',
-    backgroundColor: '#fff',
-    padding: 16,
-    borderRadius: 16,
-    elevation: 1,
-    shadowColor: '#2C3D4F',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.06,
-    shadowRadius: 4,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
   },
-  progressLabel: {
-    fontSize: 15,
-    color: '#829AAF',
-    marginBottom: 6,
-    fontFamily: Platform.OS === 'ios' ? 'System' : 'sans-serif',
-    fontWeight: '500',
-  },
-  progressValue: {
+  loadingText: {
     fontSize: 16,
-    fontFamily: Platform.OS === 'ios' ? 'System' : 'sans-serif',
-    fontWeight: '600',
-  },
-  statsContainer: {
-    padding: 16,
-  },
-  dateTitle: {
-    fontSize: 22,
-    fontWeight: '700',
-    color: '#2C3D4F',
-    marginBottom: 16,
-    fontFamily: Platform.OS === 'ios' ? 'System' : 'sans-serif',
-    letterSpacing: -0.5,
-  },
-  statCard: {
-    backgroundColor: '#fff',
-    padding: 16,
-    borderRadius: 16,
-    marginBottom: 12,
-    elevation: 1,
-    shadowColor: '#2C3D4F',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.06,
-    shadowRadius: 4,
-  },
-  statLabel: {
-    fontSize: 15,
     color: '#829AAF',
-    marginBottom: 6,
-    fontFamily: Platform.OS === 'ios' ? 'System' : 'sans-serif',
-    fontWeight: '500',
   },
-  statValue: {
-    fontSize: 24,
-    color: '#1E4D6B',
-    fontFamily: Platform.OS === 'ios' ? 'System' : 'sans-serif',
-    fontWeight: '700',
+  emptyContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  emptyText: {
+    fontSize: 16,
+    color: '#829AAF',
   },
 });
 
