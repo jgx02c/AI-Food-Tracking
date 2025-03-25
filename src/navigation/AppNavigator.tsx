@@ -1,101 +1,86 @@
-import React from 'react';
-import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import React, { useEffect, useState } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
+import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
 import { Platform } from 'react-native';
+import { StorageService } from '../services/storage';
 
 import HomeScreen from '../screens/HomeScreen';
 import CameraScreen from '../screens/CameraScreen';
 import HistoryScreen from '../screens/HistoryScreen';
 import SettingsScreen from '../screens/SettingsScreen';
 import WorkoutScreen from '../screens/WorkoutScreen';
+import OnboardingScreen from '../screens/OnboardingScreen';
 
-const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
-
-const MainStack = () => {
-  return (
-    <Stack.Navigator
-      screenOptions={{
-        headerShown: false,
-      }}
-    >
-      <Stack.Screen name="MainTabs" component={TabNavigator} />
-      <Stack.Screen name="Camera" component={CameraScreen} />
-      <Stack.Screen name="Workout" component={WorkoutScreen} />
-    </Stack.Navigator>
-  );
-};
+const Tab = createBottomTabNavigator();
 
 const TabNavigator = () => {
   return (
     <Tab.Navigator
-      screenOptions={({ route }) => ({
-        tabBarIcon: ({ focused, color, size }) => {
-          let iconName;
-
-          switch (route.name) {
-            case 'Home':
-              iconName = focused ? 'home' : 'home-outline';
-              break;
-            case 'History':
-              iconName = focused ? 'calendar' : 'calendar-outline';
-              break;
-            case 'Workout':
-              iconName = focused ? 'barbell' : 'barbell-outline';
-              break;
-            case 'Settings':
-              iconName = focused ? 'settings' : 'settings-outline';
-              break;
-            default:
-              iconName = 'help-outline';
-          }
-
-          return <Ionicons name={iconName as any} size={size} color={color} />;
-        },
-        tabBarActiveTintColor: '#1E4D6B',
-        tabBarInactiveTintColor: '#829AAF',
+      screenOptions={{
         tabBarStyle: {
           backgroundColor: '#fff',
           borderTopWidth: 1,
-          borderTopColor: '#F5F5F0',
-          paddingBottom: 8,
+          borderTopColor: '#E5E7EB',
+          paddingBottom: Platform.OS === 'ios' ? 20 : 8,
           paddingTop: 8,
+          height: Platform.OS === 'ios' ? 88 : 68,
         },
+        tabBarActiveTintColor: '#1E4D6B',
+        tabBarInactiveTintColor: '#829AAF',
         tabBarLabelStyle: {
           fontSize: 12,
           fontWeight: '500',
           fontFamily: Platform.OS === 'ios' ? 'System' : 'sans-serif',
         },
-      })}
+        headerShown: false,
+      }}
     >
       <Tab.Screen
         name="Home"
         component={HomeScreen}
         options={{
-          title: 'Home',
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="home-outline" size={size} color={color} />
+          ),
         }}
       />
       <Tab.Screen
-        name="History"
-        component={HistoryScreen}
+        name="Camera"
+        component={CameraScreen}
         options={{
-          title: 'History',
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="camera-outline" size={size} color={color} />
+          ),
         }}
       />
       <Tab.Screen
         name="Workout"
         component={WorkoutScreen}
         options={{
-          title: 'Workout',
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="barbell-outline" size={size} color={color} />
+          ),
+        }}
+      />
+      <Tab.Screen
+        name="History"
+        component={HistoryScreen}
+        options={{
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="calendar-outline" size={size} color={color} />
+          ),
         }}
       />
       <Tab.Screen
         name="Settings"
         component={SettingsScreen}
         options={{
-          title: 'Settings',
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="settings-outline" size={size} color={color} />
+          ),
         }}
       />
     </Tab.Navigator>
@@ -103,9 +88,31 @@ const TabNavigator = () => {
 };
 
 const AppNavigator = () => {
+  const [hasCompletedOnboarding, setHasCompletedOnboarding] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    checkOnboardingStatus();
+  }, []);
+
+  const checkOnboardingStatus = async () => {
+    const goals = await StorageService.getUserGoals();
+    const piclistKey = await StorageService.getPiclistKey();
+    setHasCompletedOnboarding(!!goals && !!piclistKey);
+  };
+
+  if (hasCompletedOnboarding === null) {
+    return null; // Or a loading screen
+  }
+
   return (
     <NavigationContainer>
-      <MainStack />
+      <Stack.Navigator screenOptions={{ headerShown: false }}>
+        {!hasCompletedOnboarding ? (
+          <Stack.Screen name="Onboarding" component={OnboardingScreen} />
+        ) : (
+          <Stack.Screen name="MainTabs" component={TabNavigator} />
+        )}
+      </Stack.Navigator>
     </NavigationContainer>
   );
 };

@@ -1,9 +1,12 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, RefreshControl, Alert, Platform, StatusBar } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, RefreshControl, Alert, Platform, StatusBar, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { DayStats, FoodEntry } from '../types';
-import { getFoodEntriesForDate } from '../services/foodEntries';
+import { FoodEntriesService } from '../services/foodEntries';
+import { StorageService } from '../services/storage';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Ionicons } from '@expo/vector-icons';
+import { useNavigation } from '@react-navigation/native';
 
 interface UserGoals {
   calorieGoal: string;
@@ -14,7 +17,24 @@ interface UserGoals {
   targetWeight: string;
 }
 
+interface WorkoutSession {
+  id: string;
+  templateId: string;
+  date: string;
+  exercises: {
+    id: string;
+    name: string;
+    sets: {
+      reps: number;
+      weight?: number;
+      completed: boolean;
+    }[];
+  }[];
+  duration: number;
+}
+
 const HomeScreen = () => {
+  const navigation = useNavigation();
   const [todayStats, setTodayStats] = useState<DayStats>({
     totalCalories: 0,
     totalProtein: 0,
@@ -31,6 +51,7 @@ const HomeScreen = () => {
     weight: '',
     targetWeight: '',
   });
+  const [todayWorkouts, setTodayWorkouts] = useState<WorkoutSession[]>([]);
 
   const loadGoals = async () => {
     try {
@@ -46,21 +67,22 @@ const HomeScreen = () => {
   const fetchTodayEntries = async () => {
     try {
       const today = new Date().toISOString().split('T')[0];
-      const entries = await getFoodEntriesForDate(today);
+      const allEntries = await FoodEntriesService.getFoodEntries();
+      const todayEntries = allEntries.filter(entry => entry.date === today);
       
       const stats: DayStats = {
         totalCalories: 0,
         totalProtein: 0,
         totalCarbs: 0,
         totalFat: 0,
-        entries,
+        entries: todayEntries,
       };
 
-      entries.forEach(entry => {
+      todayEntries.forEach(entry => {
         stats.totalCalories += entry.calories;
-        stats.totalProtein += entry.nutrients.protein;
-        stats.totalCarbs += entry.nutrients.carbs;
-        stats.totalFat += entry.nutrients.fat;
+        stats.totalProtein += entry.protein;
+        stats.totalCarbs += entry.carbs;
+        stats.totalFat += entry.fat;
       });
 
       setTodayStats(stats);
@@ -70,15 +92,28 @@ const HomeScreen = () => {
     }
   };
 
+  const fetchTodayWorkouts = async () => {
+    try {
+      const today = new Date().toISOString().split('T')[0];
+      const allWorkouts = await StorageService.getWorkoutSessions();
+      const todayWorkouts = allWorkouts.filter(workout => workout.date === today);
+      setTodayWorkouts(todayWorkouts);
+    } catch (error) {
+      console.error('Error fetching today\'s workouts:', error);
+      Alert.alert('Error', 'Failed to fetch today\'s workouts');
+    }
+  };
+
   const onRefresh = async () => {
     setRefreshing(true);
-    await Promise.all([fetchTodayEntries(), loadGoals()]);
+    await Promise.all([fetchTodayEntries(), loadGoals(), fetchTodayWorkouts()]);
     setRefreshing(false);
   };
 
   useEffect(() => {
     loadGoals();
     fetchTodayEntries();
+    fetchTodayWorkouts();
   }, []);
 
   const getProgressColor = (current: number, goal: number) => {
@@ -86,6 +121,15 @@ const HomeScreen = () => {
     if (percentage > 100) return '#A67356'; // Warm Cognac
     if (percentage > 90) return '#829AAF'; // Muted Steel Blue
     return '#739E82'; // Sage Green
+  };
+
+  const getProgressMessage = (current: number, goal: number) => {
+    const percentage = (current / goal) * 100;
+    if (percentage > 100) return 'Over goal';
+    if (percentage > 90) return 'Almost there!';
+    if (percentage > 70) return 'On track';
+    if (percentage > 50) return 'Keep going';
+    return 'Need to catch up';
   };
 
   return (
@@ -98,64 +142,116 @@ const HomeScreen = () => {
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
         }
       >
-        <View style={styles.statsContainer}>
+        <View style={styles.header}>
           <Text style={styles.title}>Today's Progress</Text>
-          <View style={styles.stat}>
-            <Text style={styles.statLabel}>Calories</Text>
-            <Text style={[
-              styles.statValue,
-              { color: getProgressColor(todayStats.totalCalories, parseInt(goals.calorieGoal)) }
-            ]}>
-              {todayStats.totalCalories} / {goals.calorieGoal}
-            </Text>
+          <Text style={styles.date}>{new Date().toLocaleDateString()}</Text>
+        </View>
+
+        {todayWorkouts.length > 0 && (
+          <View style={styles.workoutsContainer}>
+            <Text style={styles.sectionTitle}>Today's Workouts</Text>
+            {todayWorkouts.map(workout => (
+              <TouchableOpacity 
+                key={workout.id} 
+                style={styles.workoutCard}
+                onPress={() => navigation.navigate('WorkoutDetails', { workoutId: workout.id })}
+              >
+                <View style={styles.workoutHeader}>
+                  <Ionicons name="barbell-outline" size={24} color="#2C3E50" />
+                  <Text style={styles.workoutTitle}>Workout Session</Text>
+                  <Ionicons name="chevron-forward" size={20} color="#7F8C8D" style={styles.chevron} />
+                </View>
+                <Text style={styles.workoutDuration}>
+                  Duration: {Math.round(workout.duration / 60)} minutes
+                </Text>
+                <View style={styles.exerciseList}>
+                  {workout.exercises.map(exercise => (
+                    <View key={exercise.id} style={styles.exerciseItem}>
+                      <Text style={styles.exerciseName}>{exercise.name}</Text>
+                      <Text style={styles.exerciseSets}>
+                        {exercise.sets.length} sets completed
+                      </Text>
+                    </View>
+                  ))}
+                </View>
+              </TouchableOpacity>
+            ))}
           </View>
-          <View style={styles.nutrientsContainer}>
-            <View style={styles.nutrient}>
-              <Text style={styles.nutrientLabel}>Protein</Text>
-              <Text style={[styles.nutrientValue, { 
-                color: getProgressColor(todayStats.totalProtein, parseInt(goals.proteinGoal))
-              }]}>
-                {todayStats.totalProtein}g / {goals.proteinGoal}g
-              </Text>
-            </View>
-            <View style={styles.nutrient}>
-              <Text style={styles.nutrientLabel}>Carbs</Text>
-              <Text style={[styles.nutrientValue, { 
-                color: getProgressColor(todayStats.totalCarbs, parseInt(goals.carbsGoal))
-              }]}>
-                {todayStats.totalCarbs}g / {goals.carbsGoal}g
-              </Text>
-            </View>
-            <View style={styles.nutrient}>
-              <Text style={styles.nutrientLabel}>Fat</Text>
-              <Text style={[styles.nutrientValue, { 
-                color: getProgressColor(todayStats.totalFat, parseInt(goals.fatGoal))
-              }]}>
-                {todayStats.totalFat}g / {goals.fatGoal}g
-              </Text>
-            </View>
+        )}
+
+        <View style={styles.statsContainer}>
+          <View style={styles.statCard}>
+            <Text style={styles.statLabel}>Calories</Text>
+            <Text style={styles.statValue}>{todayStats.totalCalories}</Text>
+            <Text style={styles.statGoal}>Goal: {goals.calorieGoal}</Text>
+            <Text style={[styles.progressMessage, { color: getProgressColor(todayStats.totalCalories, parseInt(goals.calorieGoal)) }]}>
+              {getProgressMessage(todayStats.totalCalories, parseInt(goals.calorieGoal))}
+            </Text>
+            <View style={[styles.progressBar, { backgroundColor: getProgressColor(todayStats.totalCalories, parseInt(goals.calorieGoal)) }]} />
+          </View>
+
+          <View style={styles.statCard}>
+            <Text style={styles.statLabel}>Protein</Text>
+            <Text style={styles.statValue}>{todayStats.totalProtein}g</Text>
+            <Text style={styles.statGoal}>Goal: {goals.proteinGoal}g</Text>
+            <Text style={[styles.progressMessage, { color: getProgressColor(todayStats.totalProtein, parseInt(goals.proteinGoal)) }]}>
+              {getProgressMessage(todayStats.totalProtein, parseInt(goals.proteinGoal))}
+            </Text>
+            <View style={[styles.progressBar, { backgroundColor: getProgressColor(todayStats.totalProtein, parseInt(goals.proteinGoal)) }]} />
+          </View>
+
+          <View style={styles.statCard}>
+            <Text style={styles.statLabel}>Carbs</Text>
+            <Text style={styles.statValue}>{todayStats.totalCarbs}g</Text>
+            <Text style={styles.statGoal}>Goal: {goals.carbsGoal}g</Text>
+            <Text style={[styles.progressMessage, { color: getProgressColor(todayStats.totalCarbs, parseInt(goals.carbsGoal)) }]}>
+              {getProgressMessage(todayStats.totalCarbs, parseInt(goals.carbsGoal))}
+            </Text>
+            <View style={[styles.progressBar, { backgroundColor: getProgressColor(todayStats.totalCarbs, parseInt(goals.carbsGoal)) }]} />
+          </View>
+
+          <View style={styles.statCard}>
+            <Text style={styles.statLabel}>Fat</Text>
+            <Text style={styles.statValue}>{todayStats.totalFat}g</Text>
+            <Text style={styles.statGoal}>Goal: {goals.fatGoal}g</Text>
+            <Text style={[styles.progressMessage, { color: getProgressColor(todayStats.totalFat, parseInt(goals.fatGoal)) }]}>
+              {getProgressMessage(todayStats.totalFat, parseInt(goals.fatGoal))}
+            </Text>
+            <View style={[styles.progressBar, { backgroundColor: getProgressColor(todayStats.totalFat, parseInt(goals.fatGoal)) }]} />
           </View>
         </View>
 
-        <View style={styles.entriesContainer}>
-          <Text style={styles.sectionTitle}>Today's Entries</Text>
+        <TouchableOpacity 
+          style={styles.entriesContainer}
+          onPress={() => navigation.navigate('FoodEntries')}
+        >
+          <View style={styles.entriesHeader}>
+            <Text style={styles.sectionTitle}>Today's Food Entries</Text>
+            <Ionicons name="chevron-forward" size={20} color="#7F8C8D" />
+          </View>
           {todayStats.entries.length === 0 ? (
-            <View style={styles.emptyState}>
-              <Text style={styles.emptyStateText}>No food entries yet today</Text>
-              <Text style={styles.emptyStateSubtext}>Use the camera to add your first meal!</Text>
-            </View>
+            <Text style={styles.emptyText}>No entries for today</Text>
           ) : (
-            todayStats.entries.map((entry) => (
-              <View key={entry.id} style={styles.entryCard}>
-                <Text style={styles.entryTitle}>{entry.description}</Text>
-                <Text style={styles.entryCalories}>{entry.calories} calories</Text>
-                <Text style={styles.entryNutrients}>
-                  P: {entry.nutrients.protein}g | C: {entry.nutrients.carbs}g | F: {entry.nutrients.fat}g
+            <>
+              {todayStats.entries.slice(0, 3).map(entry => (
+                <View key={entry.id} style={styles.entryCard}>
+                  <Text style={styles.entryName}>{entry.name}</Text>
+                  <View style={styles.entryDetails}>
+                    <Text style={styles.entryCalories}>{entry.calories} cal</Text>
+                    <Text style={styles.entryMacros}>
+                      P: {entry.protein}g | C: {entry.carbs}g | F: {entry.fat}g
+                    </Text>
+                  </View>
+                </View>
+              ))}
+              {todayStats.entries.length > 3 && (
+                <Text style={styles.viewMoreText}>
+                  View {todayStats.entries.length - 3} more entries
                 </Text>
-              </View>
-            ))
+              )}
+            </>
           )}
-        </View>
+        </TouchableOpacity>
       </ScrollView>
     </SafeAreaView>
   );
@@ -170,128 +266,183 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   contentContainer: {
-    paddingBottom: 20,
+    padding: 16,
   },
-  statsContainer: {
-    backgroundColor: '#fff',
-    padding: 24,
-    margin: 16,
-    borderRadius: 20,
-    elevation: 2,
-    shadowColor: '#2C3D4F',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 8,
+  header: {
+    marginBottom: 24,
   },
   title: {
     fontSize: 28,
-    fontWeight: '700',
-    marginBottom: 24,
-    color: '#2C3D4F',
-    fontFamily: Platform.OS === 'ios' ? 'System' : 'sans-serif',
-    letterSpacing: -0.5,
+    fontWeight: 'bold',
+    color: '#2C3E50',
+    marginBottom: 8,
   },
-  stat: {
+  date: {
+    fontSize: 16,
+    color: '#7F8C8D',
+  },
+  statsContainer: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     justifyContent: 'space-between',
-    alignItems: 'center',
     marginBottom: 24,
-    paddingBottom: 24,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F5F5F0',
+  },
+  statCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    padding: 16,
+    width: '48%',
+    marginBottom: 16,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 3.84,
+    elevation: 5,
   },
   statLabel: {
-    fontSize: 18,
-    color: '#2C3D4F',
-    fontFamily: Platform.OS === 'ios' ? 'System' : 'sans-serif',
-    fontWeight: '600',
+    fontSize: 14,
+    color: '#7F8C8D',
+    marginBottom: 4,
   },
   statValue: {
-    fontSize: 20,
-    fontWeight: '700',
-    fontFamily: Platform.OS === 'ios' ? 'System' : 'sans-serif',
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#2C3E50',
+    marginBottom: 4,
   },
-  nutrientsContainer: {
+  statGoal: {
+    fontSize: 12,
+    color: '#7F8C8D',
+    marginBottom: 4,
+  },
+  progressMessage: {
+    fontSize: 12,
+    fontWeight: '600',
+    marginBottom: 8,
+  },
+  progressBar: {
+    height: 4,
+    borderRadius: 2,
+  },
+  workoutsContainer: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 24,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 3.84,
+    elevation: 5,
+  },
+  workoutCard: {
+    backgroundColor: '#F8F9FA',
+    borderRadius: 8,
+    padding: 12,
+    marginBottom: 8,
+  },
+  workoutHeader: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
-  nutrient: {
     alignItems: 'center',
-    flex: 1,
+    marginBottom: 8,
   },
-  nutrientLabel: {
-    fontSize: 15,
-    marginBottom: 6,
-    color: '#829AAF',
-    fontFamily: Platform.OS === 'ios' ? 'System' : 'sans-serif',
-    fontWeight: '500',
-  },
-  nutrientValue: {
+  workoutTitle: {
     fontSize: 16,
     fontWeight: '600',
-    fontFamily: Platform.OS === 'ios' ? 'System' : 'sans-serif',
+    color: '#2C3E50',
+    marginLeft: 8,
   },
-  entriesContainer: {
-    padding: 16,
-  },
-  sectionTitle: {
-    fontSize: 22,
-    fontWeight: '700',
-    marginBottom: 16,
-    color: '#2C3D4F',
-    fontFamily: Platform.OS === 'ios' ? 'System' : 'sans-serif',
-    letterSpacing: -0.5,
-  },
-  entryCard: {
-    backgroundColor: '#fff',
-    padding: 16,
-    borderRadius: 16,
-    marginBottom: 12,
-    elevation: 1,
-    shadowColor: '#2C3D4F',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.06,
-    shadowRadius: 4,
-  },
-  entryTitle: {
-    fontSize: 17,
-    fontWeight: '600',
-    marginBottom: 6,
-    color: '#2C3D4F',
-    fontFamily: Platform.OS === 'ios' ? 'System' : 'sans-serif',
-  },
-  entryCalories: {
-    fontSize: 15,
-    color: '#1E4D6B',
-    marginBottom: 6,
-    fontFamily: Platform.OS === 'ios' ? 'System' : 'sans-serif',
-    fontWeight: '500',
-  },
-  entryNutrients: {
+  workoutDuration: {
     fontSize: 14,
-    color: '#829AAF',
-    fontFamily: Platform.OS === 'ios' ? 'System' : 'sans-serif',
-    fontWeight: '500',
+    color: '#7F8C8D',
+    marginBottom: 8,
   },
-  emptyState: {
-    alignItems: 'center',
-    padding: 32,
-    backgroundColor: '#fff',
-    borderRadius: 16,
+  exerciseList: {
     marginTop: 8,
   },
-  emptyStateText: {
-    fontSize: 18,
-    color: '#2C3D4F',
-    marginBottom: 8,
-    fontFamily: Platform.OS === 'ios' ? 'System' : 'sans-serif',
-    fontWeight: '600',
+  exerciseItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 4,
   },
-  emptyStateSubtext: {
-    fontSize: 15,
-    color: '#829AAF',
-    fontFamily: Platform.OS === 'ios' ? 'System' : 'sans-serif',
-    fontWeight: '500',
+  exerciseName: {
+    fontSize: 14,
+    color: '#2C3E50',
+  },
+  exerciseSets: {
+    fontSize: 12,
+    color: '#7F8C8D',
+  },
+  entriesContainer: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    padding: 16,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 3.84,
+    elevation: 5,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#2C3E50',
+    marginBottom: 16,
+  },
+  emptyText: {
+    textAlign: 'center',
+    color: '#7F8C8D',
+    fontSize: 16,
+  },
+  entryCard: {
+    backgroundColor: '#F8F9FA',
+    borderRadius: 8,
+    padding: 12,
+    marginBottom: 8,
+  },
+  entryName: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#2C3E50',
+    marginBottom: 4,
+  },
+  entryDetails: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  entryCalories: {
+    fontSize: 14,
+    color: '#7F8C8D',
+  },
+  entryMacros: {
+    fontSize: 14,
+    color: '#7F8C8D',
+  },
+  chevron: {
+    marginLeft: 'auto',
+  },
+  entriesHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 16,
+  },
+  viewMoreText: {
+    textAlign: 'center',
+    color: '#7F8C8D',
+    fontSize: 14,
+    marginTop: 8,
   },
 });
 

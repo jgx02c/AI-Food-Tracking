@@ -1,14 +1,12 @@
 export interface FoodEntry {
   id: string;
-  timestamp: number;
-  imageUrl: string;
-  description: string;
+  name: string;
   calories: number;
-  nutrients: {
-    protein: number;
-    carbs: number;
-    fat: number;
-  };
+  protein: number;
+  carbs: number;
+  fat: number;
+  date: string;
+  imageUrl?: string;
 }
 
 export interface UserStats {
