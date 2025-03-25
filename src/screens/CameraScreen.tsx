@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { StyleSheet, Text, View, TouchableOpacity, ActivityIndicator, Alert, Modal, TextInput, KeyboardAvoidingView, Platform } from 'react-native';
+import { StyleSheet, Text, View, TouchableOpacity, ActivityIndicator, Alert, Modal, TextInput, KeyboardAvoidingView, Platform, StatusBar } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import type { CameraCapturedPicture } from 'expo-camera';
 import { useNavigation } from '@react-navigation/native';
@@ -60,10 +61,8 @@ const CameraScreen = () => {
 
     try {
       setIsProcessing(true);
-      // Analyze the image
       const foodData = await analyzeFoodImage(`data:image/jpeg;base64,${capturedImage.base64}`);
 
-      // Save to Firebase
       await addFoodEntry({
         timestamp: Date.now(),
         imageUrl: capturedImage.uri,
@@ -74,15 +73,11 @@ const CameraScreen = () => {
         mealType: foodInfo.mealType,
       });
 
-      // Navigate back with success message
       navigation.navigate('Home');
       Alert.alert('Success', 'Food entry added successfully!');
     } catch (error) {
       console.error('Error processing food:', error);
-      Alert.alert(
-        'Error',
-        'Failed to process food image. Please try again.'
-      );
+      Alert.alert('Error', 'Failed to process food image. Please try again.');
     } finally {
       setIsProcessing(false);
       setShowModal(false);
@@ -96,31 +91,32 @@ const CameraScreen = () => {
   };
 
   if (!permission) {
-    // Camera permissions are still loading
     return (
-      <View style={styles.centered}>
-        <ActivityIndicator size="large" color="#2196F3" />
-      </View>
+      <SafeAreaView style={styles.centered}>
+        <StatusBar barStyle="dark-content" backgroundColor="#F1FAEE" />
+        <ActivityIndicator size="large" color="#E63946" />
+      </SafeAreaView>
     );
   }
 
   if (!permission.granted) {
-    // Camera permissions are not granted yet
     return (
-      <View style={styles.centered}>
-        <Text style={styles.errorText}>We need your permission to show the camera</Text>
+      <SafeAreaView style={styles.centered}>
+        <StatusBar barStyle="dark-content" backgroundColor="#F1FAEE" />
+        <Text style={styles.errorText}>Camera access required</Text>
         <TouchableOpacity 
           style={styles.retryButton}
           onPress={requestPermission}
         >
-          <Text style={styles.retryText}>Grant Permission</Text>
+          <Text style={styles.retryText}>Grant Access</Text>
         </TouchableOpacity>
-      </View>
+      </SafeAreaView>
     );
   }
 
   return (
     <View style={styles.container}>
+      <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
       <CameraView
         ref={cameraRef}
         style={styles.camera}
@@ -133,7 +129,7 @@ const CameraScreen = () => {
           console.log('Camera is ready');
         }}
       >
-        <View style={styles.overlay}>
+        <SafeAreaView style={styles.overlay} edges={['bottom']}>
           <View style={styles.buttonContainer}>
             <TouchableOpacity
               style={[styles.button, isProcessing && styles.buttonDisabled]}
@@ -147,7 +143,7 @@ const CameraScreen = () => {
               )}
             </TouchableOpacity>
           </View>
-        </View>
+        </SafeAreaView>
       </CameraView>
 
       <Modal
@@ -170,6 +166,7 @@ const CameraScreen = () => {
                 value={foodInfo.description}
                 onChangeText={(text) => setFoodInfo(prev => ({ ...prev, description: text }))}
                 placeholder="E.g., Grilled Chicken Salad"
+                placeholderTextColor="#A8A8A8"
               />
             </View>
 
@@ -180,6 +177,7 @@ const CameraScreen = () => {
                 value={foodInfo.servingSize}
                 onChangeText={(text) => setFoodInfo(prev => ({ ...prev, servingSize: text }))}
                 placeholder="E.g., 1 bowl, 200g"
+                placeholderTextColor="#A8A8A8"
               />
             </View>
 
@@ -236,6 +234,7 @@ const CameraScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: '#000',
   },
   camera: {
     flex: 1,
@@ -248,7 +247,7 @@ const styles = StyleSheet.create({
   buttonContainer: {
     flexDirection: 'row',
     justifyContent: 'center',
-    marginBottom: 30,
+    marginBottom: Platform.OS === 'ios' ? 10 : 20,
   },
   button: {
     alignItems: 'center',
@@ -267,29 +266,32 @@ const styles = StyleSheet.create({
     borderRadius: 30,
     backgroundColor: '#fff',
     borderWidth: 4,
-    borderColor: '#000',
+    borderColor: '#E63946',
   },
   centered: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#fff',
+    backgroundColor: '#F1FAEE',
   },
   errorText: {
     fontSize: 18,
-    color: '#666',
+    color: '#1D3557',
     marginBottom: 20,
     textAlign: 'center',
+    fontFamily: Platform.OS === 'ios' ? 'System' : 'sans-serif',
   },
   retryButton: {
-    backgroundColor: '#2196F3',
+    backgroundColor: '#E63946',
     paddingHorizontal: 20,
     paddingVertical: 10,
-    borderRadius: 5,
+    borderRadius: 8,
   },
   retryText: {
     color: '#fff',
     fontSize: 16,
+    fontFamily: Platform.OS === 'ios' ? 'System' : 'sans-serif',
+    fontWeight: '500',
   },
   modalContainer: {
     flex: 1,
@@ -297,7 +299,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0,0,0,0.5)',
   },
   modalContent: {
-    backgroundColor: '#fff',
+    backgroundColor: '#F1FAEE',
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     padding: 20,
@@ -305,9 +307,11 @@ const styles = StyleSheet.create({
   },
   modalTitle: {
     fontSize: 24,
-    fontWeight: 'bold',
+    fontWeight: '600',
     marginBottom: 20,
     textAlign: 'center',
+    color: '#1D3557',
+    fontFamily: Platform.OS === 'ios' ? 'System' : 'sans-serif',
   },
   inputGroup: {
     marginBottom: 20,
@@ -315,14 +319,19 @@ const styles = StyleSheet.create({
   label: {
     fontSize: 16,
     marginBottom: 8,
-    color: '#666',
+    color: '#1D3557',
+    fontFamily: Platform.OS === 'ios' ? 'System' : 'sans-serif',
+    fontWeight: '500',
   },
   input: {
     borderWidth: 1,
-    borderColor: '#ddd',
+    borderColor: '#A8A8A8',
     borderRadius: 8,
     padding: 12,
     fontSize: 16,
+    color: '#1D3557',
+    backgroundColor: '#fff',
+    fontFamily: Platform.OS === 'ios' ? 'System' : 'sans-serif',
   },
   mealTypeContainer: {
     flexDirection: 'row',
@@ -333,14 +342,19 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 20,
-    backgroundColor: '#f0f0f0',
+    backgroundColor: '#fff',
     marginRight: 10,
+    borderWidth: 1,
+    borderColor: '#A8A8A8',
   },
   mealTypeButtonActive: {
-    backgroundColor: '#2196F3',
+    backgroundColor: '#E63946',
+    borderColor: '#E63946',
   },
   mealTypeText: {
-    color: '#666',
+    color: '#1D3557',
+    fontFamily: Platform.OS === 'ios' ? 'System' : 'sans-serif',
+    fontWeight: '500',
   },
   mealTypeTextActive: {
     color: '#fff',
@@ -357,16 +371,17 @@ const styles = StyleSheet.create({
     marginHorizontal: 5,
   },
   cancelButton: {
-    backgroundColor: '#ff6b6b',
+    backgroundColor: '#1D3557',
   },
   submitButton: {
-    backgroundColor: '#2196F3',
+    backgroundColor: '#E63946',
   },
   modalButtonText: {
     color: '#fff',
     textAlign: 'center',
     fontSize: 16,
-    fontWeight: 'bold',
+    fontWeight: '600',
+    fontFamily: Platform.OS === 'ios' ? 'System' : 'sans-serif',
   },
 });
 

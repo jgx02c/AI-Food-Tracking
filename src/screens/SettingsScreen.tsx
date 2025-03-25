@@ -9,8 +9,11 @@ import {
   Alert,
   KeyboardAvoidingView,
   Platform,
+  StatusBar,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { StorageService } from '../services/storage';
 
 interface UserGoals {
   calorieGoal: string;
@@ -33,9 +36,11 @@ const SettingsScreen = () => {
     targetWeight: '',
   });
   const [isSaving, setIsSaving] = useState(false);
+  const [piclistKey, setPiclistKey] = useState('');
 
   useEffect(() => {
     loadGoals();
+    loadSettings();
   }, []);
 
   const loadGoals = async () => {
@@ -47,6 +52,13 @@ const SettingsScreen = () => {
     } catch (error) {
       console.error('Error loading goals:', error);
       Alert.alert('Error', 'Failed to load your goals');
+    }
+  };
+
+  const loadSettings = async () => {
+    const key = await StorageService.getPiclistKey();
+    if (key) {
+      setPiclistKey(key);
     }
   };
 
@@ -63,6 +75,11 @@ const SettingsScreen = () => {
     }
   };
 
+  const handleSaveSettings = async () => {
+    await StorageService.savePiclistKey(piclistKey);
+    Alert.alert('Success', 'Settings saved successfully');
+  };
+
   const handleChange = (key: keyof UserGoals, value: string) => {
     // Only allow numbers
     if (value && !/^\d*\.?\d*$/.test(value)) return;
@@ -70,145 +87,203 @@ const SettingsScreen = () => {
   };
 
   return (
-    <KeyboardAvoidingView 
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      style={styles.container}
-    >
-      <ScrollView style={styles.scrollView}>
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Daily Nutrition Goals</Text>
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>Daily Calories</Text>
-            <TextInput
-              style={styles.input}
-              keyboardType="numeric"
-              value={goals.calorieGoal}
-              onChangeText={(value) => handleChange('calorieGoal', value)}
-              placeholder="Enter daily calorie goal"
-            />
+    <SafeAreaView style={styles.safeArea} edges={['top']}>
+      <StatusBar barStyle="dark-content" backgroundColor="#F5F5F0" />
+      <KeyboardAvoidingView 
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        style={styles.container}
+      >
+        <ScrollView style={styles.scrollView}>
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Daily Nutrition Goals</Text>
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>Daily Calories</Text>
+              <TextInput
+                style={styles.input}
+                keyboardType="numeric"
+                value={goals.calorieGoal}
+                onChangeText={(value) => handleChange('calorieGoal', value)}
+                placeholder="Enter daily calorie goal"
+                placeholderTextColor="#829AAF"
+              />
+            </View>
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>Protein (g)</Text>
+              <TextInput
+                style={styles.input}
+                keyboardType="numeric"
+                value={goals.proteinGoal}
+                onChangeText={(value) => handleChange('proteinGoal', value)}
+                placeholder="Enter protein goal"
+                placeholderTextColor="#829AAF"
+              />
+            </View>
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>Carbs (g)</Text>
+              <TextInput
+                style={styles.input}
+                keyboardType="numeric"
+                value={goals.carbsGoal}
+                onChangeText={(value) => handleChange('carbsGoal', value)}
+                placeholder="Enter carbs goal"
+                placeholderTextColor="#829AAF"
+              />
+            </View>
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>Fat (g)</Text>
+              <TextInput
+                style={styles.input}
+                keyboardType="numeric"
+                value={goals.fatGoal}
+                onChangeText={(value) => handleChange('fatGoal', value)}
+                placeholder="Enter fat goal"
+                placeholderTextColor="#829AAF"
+              />
+            </View>
           </View>
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>Protein (g)</Text>
-            <TextInput
-              style={styles.input}
-              keyboardType="numeric"
-              value={goals.proteinGoal}
-              onChangeText={(value) => handleChange('proteinGoal', value)}
-              placeholder="Enter protein goal"
-            />
-          </View>
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>Carbs (g)</Text>
-            <TextInput
-              style={styles.input}
-              keyboardType="numeric"
-              value={goals.carbsGoal}
-              onChangeText={(value) => handleChange('carbsGoal', value)}
-              placeholder="Enter carbs goal"
-            />
-          </View>
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>Fat (g)</Text>
-            <TextInput
-              style={styles.input}
-              keyboardType="numeric"
-              value={goals.fatGoal}
-              onChangeText={(value) => handleChange('fatGoal', value)}
-              placeholder="Enter fat goal"
-            />
-          </View>
-        </View>
 
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Weight Tracking</Text>
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>Current Weight (kg)</Text>
-            <TextInput
-              style={styles.input}
-              keyboardType="numeric"
-              value={goals.weight}
-              onChangeText={(value) => handleChange('weight', value)}
-              placeholder="Enter current weight"
-            />
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Weight Tracking</Text>
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>Current Weight (kg)</Text>
+              <TextInput
+                style={styles.input}
+                keyboardType="numeric"
+                value={goals.weight}
+                onChangeText={(value) => handleChange('weight', value)}
+                placeholder="Enter current weight"
+                placeholderTextColor="#829AAF"
+              />
+            </View>
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>Target Weight (kg)</Text>
+              <TextInput
+                style={styles.input}
+                keyboardType="numeric"
+                value={goals.targetWeight}
+                onChangeText={(value) => handleChange('targetWeight', value)}
+                placeholder="Enter target weight"
+                placeholderTextColor="#829AAF"
+              />
+            </View>
           </View>
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>Target Weight (kg)</Text>
-            <TextInput
-              style={styles.input}
-              keyboardType="numeric"
-              value={goals.targetWeight}
-              onChangeText={(value) => handleChange('targetWeight', value)}
-              placeholder="Enter target weight"
-            />
-          </View>
-        </View>
 
-        <TouchableOpacity
-          style={[styles.saveButton, isSaving && styles.saveButtonDisabled]}
-          onPress={saveGoals}
-          disabled={isSaving}
-        >
-          <Text style={styles.saveButtonText}>
-            {isSaving ? 'Saving...' : 'Save Goals'}
-          </Text>
-        </TouchableOpacity>
-      </ScrollView>
-    </KeyboardAvoidingView>
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>API Settings</Text>
+            <View style={styles.inputContainer}>
+              <Text style={styles.label}>Piclist API Key</Text>
+              <TextInput
+                style={styles.input}
+                value={piclistKey}
+                onChangeText={setPiclistKey}
+                placeholder="Enter your Piclist API key"
+                placeholderTextColor="#829AAF"
+                secureTextEntry
+              />
+              <Text style={styles.helperText}>
+                Get your API key from Piclist Handoff
+              </Text>
+            </View>
+          </View>
+
+          <TouchableOpacity
+            style={[styles.saveButton, isSaving && styles.saveButtonDisabled]}
+            onPress={() => {
+              saveGoals();
+              handleSaveSettings();
+            }}
+            disabled={isSaving}
+          >
+            <Text style={styles.saveButtonText}>
+              {isSaving ? 'Saving...' : 'Save Goals'}
+            </Text>
+          </TouchableOpacity>
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
+  safeArea: {
+    flex: 1,
+    backgroundColor: '#F5F5F0',
+  },
   container: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: '#F5F5F0',
   },
   scrollView: {
     flex: 1,
-    padding: 20,
+    padding: 16,
   },
   section: {
-    marginBottom: 30,
-    backgroundColor: '#f5f5f5',
+    marginBottom: 24,
+    backgroundColor: '#fff',
     padding: 20,
-    borderRadius: 10,
+    borderRadius: 16,
+    elevation: 1,
+    shadowColor: '#2C3D4F',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.06,
+    shadowRadius: 4,
   },
   sectionTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
+    fontSize: 22,
+    fontWeight: '700',
     marginBottom: 20,
-    color: '#333',
+    color: '#2C3D4F',
+    fontFamily: Platform.OS === 'ios' ? 'System' : 'sans-serif',
+    letterSpacing: -0.5,
   },
   inputGroup: {
-    marginBottom: 15,
+    marginBottom: 16,
   },
   label: {
-    fontSize: 16,
-    marginBottom: 5,
-    color: '#666',
+    fontSize: 15,
+    marginBottom: 8,
+    color: '#829AAF',
+    fontFamily: Platform.OS === 'ios' ? 'System' : 'sans-serif',
+    fontWeight: '500',
   },
   input: {
-    backgroundColor: '#fff',
-    paddingHorizontal: 15,
+    backgroundColor: '#F5F5F0',
+    paddingHorizontal: 16,
     paddingVertical: 12,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#ddd',
+    borderRadius: 12,
     fontSize: 16,
+    color: '#2C3D4F',
+    fontFamily: Platform.OS === 'ios' ? 'System' : 'sans-serif',
+  },
+  inputContainer: {
+    marginBottom: 16,
+  },
+  helperText: {
+    fontSize: 12,
+    color: '#829AAF',
+    marginTop: 4,
+    fontFamily: Platform.OS === 'ios' ? 'System' : 'sans-serif',
   },
   saveButton: {
-    backgroundColor: '#2196F3',
-    paddingVertical: 15,
-    borderRadius: 8,
+    backgroundColor: '#1E4D6B',
+    paddingVertical: 16,
+    borderRadius: 12,
     alignItems: 'center',
-    marginVertical: 20,
+    marginVertical: 24,
+    elevation: 1,
+    shadowColor: '#2C3D4F',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.06,
+    shadowRadius: 4,
   },
   saveButtonDisabled: {
-    opacity: 0.7,
+    backgroundColor: '#829AAF',
   },
   saveButtonText: {
     color: '#fff',
-    fontSize: 18,
-    fontWeight: 'bold',
+    fontSize: 16,
+    fontWeight: '600',
+    fontFamily: Platform.OS === 'ios' ? 'System' : 'sans-serif',
   },
 });
 
