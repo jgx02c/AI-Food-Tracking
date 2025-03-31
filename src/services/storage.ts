@@ -1,9 +1,19 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { WorkoutTemplate, ActiveWorkout } from '../types/workout';
+import { 
+  WorkoutTemplate, 
+  ActiveWorkout, 
+  CompletedExercise, 
+  WorkoutExercise,
+  CompletedSet,
+  WorkoutSession,
+  UserSettings,
+  WorkoutEntry
+} from '../types/workout';
 
 const STORAGE_KEYS = {
   WORKOUT_TEMPLATES: 'workout_templates',
   ACTIVE_WORKOUT: 'active_workout',
+  COMPLETED_WORKOUTS: 'completed_workouts',
   PICLIST_KEY: 'piclist_key',
   FOOD_HISTORY: 'food_history',
   USER_GOALS: 'user_goals',
@@ -31,49 +41,6 @@ export interface FoodEntry {
   imageUrl?: string;
 }
 
-export interface WorkoutExercise {
-  id: string;
-  name: string;
-  sets: number;
-  reps: number;
-  weight?: number;
-  notes?: string;
-}
-
-export interface WorkoutSession {
-  id: string;
-  templateId: string;
-  date: string;
-  exercises: CompletedExercise[];
-  duration: number;
-}
-
-export interface CompletedExercise {
-  id: string;
-  name: string;
-  sets: CompletedSet[];
-}
-
-export interface CompletedSet {
-  reps: number;
-  weight?: number;
-  completed: boolean;
-}
-
-export interface UserSettings {
-  dailyCalorieGoal: number;
-  dailyProteinGoal: number;
-  weightGoal: number;
-}
-
-export interface WorkoutEntry {
-  date: string;
-  name: string;
-  duration: number;
-  calories: number;
-  type: 'workout';
-}
-
 export const StorageService = {
   // Workout Templates
   async getWorkoutTemplates(): Promise<WorkoutTemplate[]> {
@@ -86,28 +53,59 @@ export const StorageService = {
     }
   },
 
-  async saveWorkoutTemplates(templates: WorkoutTemplate[]): Promise<void> {
+  async saveWorkoutTemplate(template: WorkoutTemplate): Promise<void> {
     try {
+      const templates = await this.getWorkoutTemplates();
+      const index = templates.findIndex(t => t.id === template.id);
+      if (index >= 0) {
+        templates[index] = template;
+      } else {
+        templates.push(template);
+      }
       await AsyncStorage.setItem(STORAGE_KEYS.WORKOUT_TEMPLATES, JSON.stringify(templates));
     } catch (error) {
-      console.error('Error saving workout templates:', error);
+      console.error('Error saving workout template:', error);
+    }
+  },
+
+  async deleteWorkoutTemplate(id: string): Promise<void> {
+    try {
+      const templates = await this.getWorkoutTemplates();
+      const filtered = templates.filter(template => template.id !== id);
+      await AsyncStorage.setItem(STORAGE_KEYS.WORKOUT_TEMPLATES, JSON.stringify(filtered));
+    } catch (error) {
+      console.error('Error deleting workout template:', error);
     }
   },
 
   // Active Workout
-  async getActiveWorkout(): Promise<ActiveWorkout | null> {
+  async createActiveWorkout(templateId: string): Promise<ActiveWorkout | null> {
     try {
-      const workout = await AsyncStorage.getItem(STORAGE_KEYS.ACTIVE_WORKOUT);
-      if (!workout) return null;
+      const templates = await this.getWorkoutTemplates();
+      const template = templates.find(t => t.id === templateId);
       
-      const parsedWorkout = JSON.parse(workout);
-      return {
-        ...parsedWorkout,
-        startTime: new Date(parsedWorkout.startTime),
-        endTime: parsedWorkout.endTime ? new Date(parsedWorkout.endTime) : undefined,
+      if (!template) {
+        console.error('Template not found');
+        return null;
+      }
+
+      const activeWorkout: ActiveWorkout = {
+        id: Date.now().toString(),
+        templateId,
+        template,
+        startTime: new Date(),
+        exercises: template.exercises.map(exercise => ({
+          exerciseId: exercise.exerciseId,
+          name: exercise.name,
+          sets: []
+        })),
+        status: 'inProgress'
       };
+
+      await this.saveActiveWorkout(activeWorkout);
+      return activeWorkout;
     } catch (error) {
-      console.error('Error getting active workout:', error);
+      console.error('Error creating active workout:', error);
       return null;
     }
   },
@@ -123,10 +121,28 @@ export const StorageService = {
         ...workout,
         startTime: workout.startTime.toISOString(),
         endTime: workout.endTime?.toISOString(),
+        template: workout.template
       };
       await AsyncStorage.setItem(STORAGE_KEYS.ACTIVE_WORKOUT, JSON.stringify(workoutToSave));
     } catch (error) {
       console.error('Error saving active workout:', error);
+    }
+  },
+
+  async getActiveWorkout(): Promise<ActiveWorkout | null> {
+    try {
+      const workout = await AsyncStorage.getItem(STORAGE_KEYS.ACTIVE_WORKOUT);
+      if (!workout) return null;
+      
+      const parsedWorkout = JSON.parse(workout);
+      return {
+        ...parsedWorkout,
+        startTime: new Date(parsedWorkout.startTime),
+        endTime: parsedWorkout.endTime ? new Date(parsedWorkout.endTime) : undefined,
+      };
+    } catch (error) {
+      console.error('Error getting active workout:', error);
+      return null;
     }
   },
 
@@ -265,13 +281,21 @@ export const StorageService = {
   async saveCompletedWorkout(workout: ActiveWorkout): Promise<void> {
     try {
       const completedWorkouts = await this.getCompletedWorkouts();
-      const workoutToSave = {
+      const workoutToSave: ActiveWorkout = {
         ...workout,
-        startTime: workout.startTime.toISOString(),
-        endTime: workout.endTime?.toISOString(),
-      } as unknown as ActiveWorkout; // Type assertion needed for date conversion
+        startTime: new Date(workout.startTime),
+        endTime: workout.endTime ? new Date(workout.endTime) : undefined,
+        template: {
+          ...workout.template,
+          exercises: workout.template.exercises.map(exercise => ({
+            ...exercise,
+            sets: exercise.sets
+          }))
+        }
+      };
       completedWorkouts.push(workoutToSave);
       await AsyncStorage.setItem(COMPLETED_WORKOUTS_KEY, JSON.stringify(completedWorkouts));
+      await this.saveActiveWorkout(null); // Clear the active workout
     } catch (error) {
       console.error('Error saving completed workout:', error);
       throw error;
@@ -280,11 +304,11 @@ export const StorageService = {
 
   async getCompletedWorkouts(): Promise<ActiveWorkout[]> {
     try {
-      const workouts = await AsyncStorage.getItem(COMPLETED_WORKOUTS_KEY);
-      if (!workouts) return [];
+      const data = await AsyncStorage.getItem(COMPLETED_WORKOUTS_KEY);
+      if (!data) return [];
       
-      const parsedWorkouts = JSON.parse(workouts);
-      return parsedWorkouts.map((workout: any) => ({
+      const workouts = JSON.parse(data);
+      return workouts.map((workout: any) => ({
         ...workout,
         startTime: new Date(workout.startTime),
         endTime: workout.endTime ? new Date(workout.endTime) : undefined,
@@ -295,16 +319,29 @@ export const StorageService = {
     }
   },
 
+  async deleteWorkout(workoutId: string): Promise<void> {
+    try {
+      const workouts = await this.getCompletedWorkouts();
+      const filtered = workouts.filter(workout => workout.id !== workoutId);
+      await AsyncStorage.setItem(COMPLETED_WORKOUTS_KEY, JSON.stringify(filtered));
+    } catch (error) {
+      console.error('Error deleting workout:', error);
+      throw error;
+    }
+  },
+
   async getWorkoutHistory(): Promise<WorkoutEntry[]> {
     try {
       const completedWorkouts = await this.getCompletedWorkouts();
-      return completedWorkouts.map(workout => ({
-        date: workout.startTime.toISOString(),
-        name: workout.template.name,
-        duration: Math.round((new Date(workout.endTime || new Date()).getTime() - new Date(workout.startTime).getTime()) / 60000),
-        calories: workout.template.calories || 0,
-        type: 'workout' as const
-      }));
+      return completedWorkouts
+        .filter(workout => workout.template) // Filter out any workouts without template data
+        .map(workout => ({
+          date: workout.startTime.toISOString(),
+          name: workout.template.name,
+          duration: Math.round((new Date(workout.endTime || new Date()).getTime() - new Date(workout.startTime).getTime()) / 60000),
+          calories: workout.template.calories || 0,
+          type: 'workout' as const
+        }));
     } catch (error) {
       console.error('Error getting workout history:', error);
       return [];

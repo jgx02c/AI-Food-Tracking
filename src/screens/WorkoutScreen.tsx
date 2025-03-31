@@ -8,77 +8,17 @@ import {
   Platform,
   StatusBar,
   Modal,
-  TextInput,
   Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { WorkoutTemplate, ActiveWorkout } from '../types/workout';
-import { exercises } from '../data/exercises';
-import WorkoutTimer from '../components/WorkoutTimer';
-import WorkoutTemplateEditor from '../components/WorkoutTemplateEditor';
 import { StorageService } from '../services/storage';
-import { Ionicons } from '@expo/vector-icons';
+import WorkoutTemplateEditor from '../components/workout/WorkoutTemplateEditor';
 import WorkoutCompletionScreen from '../components/WorkoutCompletionScreen';
 
-// Mock data for demonstration
-const mockTemplates: WorkoutTemplate[] = [
-  {
-    id: '1',
-    name: 'Full Body Workout',
-    description: 'A balanced workout targeting all major muscle groups',
-    exercises: [
-      {
-        exerciseId: 'bench-press',
-        name: 'Bench Press',
-        sets: Array(3).fill({ reps: 10, completed: false }),
-        restTime: 90,
-      },
-      {
-        exerciseId: 'squats',
-        name: 'Squats',
-        sets: Array(4).fill({ reps: 12, completed: false }),
-        restTime: 90,
-      },
-      {
-        exerciseId: 'bent-over-rows',
-        name: 'Bent Over Rows',
-        sets: Array(3).fill({ reps: 12, completed: false }),
-        restTime: 90,
-      },
-    ],
-    estimatedDuration: 45,
-    difficulty: 'intermediate',
-    muscleGroups: ['chest', 'legs', 'back'],
-  },
-  {
-    id: '2',
-    name: 'Upper Body Focus',
-    description: 'Target your chest, back, and arms',
-    exercises: [
-      {
-        exerciseId: 'bench-press',
-        name: 'Bench Press',
-        sets: Array(4).fill({ reps: 8, completed: false }),
-        restTime: 120,
-      },
-      {
-        exerciseId: 'pull-ups',
-        name: 'Pull-Ups',
-        sets: Array(3).fill({ reps: 8, completed: false }),
-        restTime: 90,
-      },
-      {
-        exerciseId: 'overhead-press',
-        name: 'Overhead Press',
-        sets: Array(3).fill({ reps: 10, completed: false }),
-        restTime: 90,
-      },
-    ],
-    estimatedDuration: 40,
-    difficulty: 'intermediate',
-    muscleGroups: ['chest', 'back', 'shoulders'],
-  },
-];
+import TemplateList from '../components/workout/TemplateList';
+import ExerciseCard from '../components/workout/ExerciseCard';
+import WorkoutHeader from '../components/workout/WorkoutHeader';
 
 const WorkoutScreen = () => {
   const [templates, setTemplates] = useState<WorkoutTemplate[]>([]);
@@ -107,64 +47,57 @@ const WorkoutScreen = () => {
     }
   };
 
+  const handleEditTemplate = (template: WorkoutTemplate) => {
+    setEditingTemplate(template);
+    setShowTemplateEditor(true);
+  };
+
+  const handleDeleteTemplate = async (templateId: string) => {
+    Alert.alert(
+      'Delete Template',
+      'Are you sure you want to delete this template?',
+      [
+        {
+          text: 'Cancel',
+          style: 'cancel',
+        },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            await StorageService.deleteWorkoutTemplate(templateId);
+            const updatedTemplates = templates.filter(t => t.id !== templateId);
+            setTemplates(updatedTemplates);
+          },
+        },
+      ]
+    );
+  };
+
   const startWorkout = async (template: WorkoutTemplate) => {
     const newWorkout: ActiveWorkout = {
       id: Date.now().toString(),
       templateId: template.id,
+      template,
       startTime: new Date(),
       exercises: template.exercises.map(exercise => ({
-        ...exercise,
-        sets: exercise.sets.map(set => ({ ...set, completed: false })),
+        exerciseId: exercise.exerciseId,
+        name: exercise.name,
+        sets: exercise.sets.map(set => ({
+          reps: set.reps,
+          weight: set.weight,
+          actualWeight: undefined,
+          actualReps: undefined,
+          completed: false,
+          isFailure: false,
+        })),
       })),
       status: 'inProgress',
     };
-    setActiveWorkout(newWorkout);
+
     await StorageService.saveActiveWorkout(newWorkout);
+    setActiveWorkout(newWorkout);
     setShowTemplates(false);
-  };
-
-  const completeSet = async (exerciseIndex: number, setIndex: number) => {
-    if (!activeWorkout) return;
-
-    const updatedExercises = [...activeWorkout.exercises];
-    const set = updatedExercises[exerciseIndex].sets[setIndex];
-    
-    // Toggle completion status
-    set.completed = !set.completed;
-    
-    // If completing the set and no actual weight is set, use the target weight
-    if (set.completed && !set.actualWeight && set.weight) {
-      set.actualWeight = set.weight;
-    }
-
-    const updatedWorkout = {
-      ...activeWorkout,
-      exercises: updatedExercises,
-    };
-    setActiveWorkout(updatedWorkout);
-    await StorageService.saveActiveWorkout(updatedWorkout);
-  };
-
-  const markSetAsFailure = async (exerciseIndex: number, setIndex: number) => {
-    if (!activeWorkout) return;
-
-    const updatedExercises = [...activeWorkout.exercises];
-    const set = updatedExercises[exerciseIndex].sets[setIndex];
-    
-    // Toggle failure status
-    set.isFailure = !set.isFailure;
-    
-    // If marking as failure, also mark as completed
-    if (set.isFailure) {
-      set.completed = true;
-    }
-
-    const updatedWorkout = {
-      ...activeWorkout,
-      exercises: updatedExercises,
-    };
-    setActiveWorkout(updatedWorkout);
-    await StorageService.saveActiveWorkout(updatedWorkout);
   };
 
   const updateSetWeight = async (exerciseIndex: number, setIndex: number, weight: number) => {
@@ -195,17 +128,41 @@ const WorkoutScreen = () => {
     await StorageService.saveActiveWorkout(updatedWorkout);
   };
 
-  const addSet = async (exerciseIndex: number) => {
+  const completeSet = async (exerciseIndex: number, setIndex: number) => {
     if (!activeWorkout) return;
 
     const updatedExercises = [...activeWorkout.exercises];
-    const lastSet = updatedExercises[exerciseIndex].sets[updatedExercises[exerciseIndex].sets.length - 1];
+    const set = updatedExercises[exerciseIndex].sets[setIndex];
     
-    updatedExercises[exerciseIndex].sets.push({
-      reps: lastSet.reps,
-      weight: lastSet.weight,
-      completed: false,
-    });
+    // Toggle completion state
+    set.completed = !set.completed;
+    
+    // If uncompleting, also clear failure state
+    if (!set.completed) {
+      set.isFailure = false;
+    }
+
+    const updatedWorkout = {
+      ...activeWorkout,
+      exercises: updatedExercises,
+    };
+    setActiveWorkout(updatedWorkout);
+    await StorageService.saveActiveWorkout(updatedWorkout);
+  };
+
+  const markSetAsFailure = async (exerciseIndex: number, setIndex: number) => {
+    if (!activeWorkout) return;
+
+    const updatedExercises = [...activeWorkout.exercises];
+    const set = updatedExercises[exerciseIndex].sets[setIndex];
+    
+    // Toggle failure state
+    set.isFailure = !set.isFailure;
+    
+    // If marking as failure, also clear completion state
+    if (set.isFailure) {
+      set.completed = false;
+    }
 
     const updatedWorkout = {
       ...activeWorkout,
@@ -245,6 +202,27 @@ const WorkoutScreen = () => {
     );
   };
 
+  const addSet = async (exerciseIndex: number) => {
+    if (!activeWorkout) return;
+
+    const updatedExercises = [...activeWorkout.exercises];
+    const lastSet = updatedExercises[exerciseIndex].sets[updatedExercises[exerciseIndex].sets.length - 1];
+    updatedExercises[exerciseIndex].sets.push({
+      ...lastSet,
+      actualWeight: undefined,
+      actualReps: undefined,
+      completed: false,
+      isFailure: false,
+    });
+
+    const updatedWorkout = {
+      ...activeWorkout,
+      exercises: updatedExercises,
+    };
+    setActiveWorkout(updatedWorkout);
+    await StorageService.saveActiveWorkout(updatedWorkout);
+  };
+
   const finishWorkout = async () => {
     if (!activeWorkout) return;
 
@@ -277,30 +255,6 @@ const WorkoutScreen = () => {
     setShowTemplates(true);
   };
 
-  const handleSaveTemplate = async (template: WorkoutTemplate) => {
-    let updatedTemplates: WorkoutTemplate[];
-    if (editingTemplate) {
-      updatedTemplates = templates.map(t => (t.id === template.id ? template : t));
-    } else {
-      updatedTemplates = [...templates, template];
-    }
-    setTemplates(updatedTemplates);
-    await StorageService.saveWorkoutTemplates(updatedTemplates);
-    setShowTemplateEditor(false);
-    setEditingTemplate(undefined);
-  };
-
-  const handleEditTemplate = (template: WorkoutTemplate) => {
-    setEditingTemplate(template);
-    setShowTemplateEditor(true);
-  };
-
-  const handleDeleteTemplate = async (templateId: string) => {
-    const updatedTemplates = templates.filter(t => t.id !== templateId);
-    setTemplates(updatedTemplates);
-    await StorageService.saveWorkoutTemplates(updatedTemplates);
-  };
-
   return (
     <SafeAreaView style={styles.safeArea} edges={['top']}>
       <StatusBar barStyle="dark-content" backgroundColor="#F5F5F0" />
@@ -319,66 +273,12 @@ const WorkoutScreen = () => {
                 <Text style={styles.addButtonText}>New Template</Text>
               </TouchableOpacity>
             </View>
-            <ScrollView style={styles.templatesContainer}>
-              {templates.length === 0 ? (
-                <View style={styles.emptyState}>
-                  <Text style={styles.emptyStateText}>No templates yet</Text>
-                  <TouchableOpacity
-                    style={styles.emptyStateButton}
-                    onPress={() => {
-                      setEditingTemplate(undefined);
-                      setShowTemplateEditor(true);
-                    }}
-                  >
-                    <Text style={styles.emptyStateButtonText}>Add New Template</Text>
-                  </TouchableOpacity>
-                </View>
-              ) : (
-                templates.map((template) => (
-                  <View key={template.id} style={styles.templateCard}>
-                    <View style={styles.templateHeader}>
-                      <Text style={styles.templateName}>{template.name}</Text>
-                      <View style={styles.templateActions}>
-                        <TouchableOpacity
-                          style={styles.actionButton}
-                          onPress={() => handleEditTemplate(template)}
-                        >
-                          <Text style={styles.actionButtonText}>Edit</Text>
-                        </TouchableOpacity>
-                        <TouchableOpacity
-                          style={[styles.actionButton, styles.deleteButton]}
-                          onPress={() => handleDeleteTemplate(template.id)}
-                        >
-                          <Text style={[styles.actionButtonText, styles.deleteButtonText]}>
-                            Delete
-                          </Text>
-                        </TouchableOpacity>
-                      </View>
-                    </View>
-                    <Text style={styles.templateDescription}>
-                      {template.description}
-                    </Text>
-                    <View style={styles.templateDetails}>
-                      <Text style={styles.detailText}>
-                        {template.exercises.length} exercises
-                      </Text>
-                      <Text style={styles.detailText}>
-                        {template.estimatedDuration} min
-                      </Text>
-                      <Text style={styles.detailText}>
-                        {template.difficulty}
-                      </Text>
-                    </View>
-                    <TouchableOpacity
-                      style={styles.startButton}
-                      onPress={() => startWorkout(template)}
-                    >
-                      <Text style={styles.startButtonText}>Start Workout</Text>
-                    </TouchableOpacity>
-                  </View>
-                ))
-              )}
-            </ScrollView>
+            <TemplateList
+              templates={templates}
+              onEditTemplate={handleEditTemplate}
+              onDeleteTemplate={handleDeleteTemplate}
+              onStartWorkout={startWorkout}
+            />
           </>
         ) : showCompletionScreen ? (
           <WorkoutCompletionScreen
@@ -387,131 +287,25 @@ const WorkoutScreen = () => {
           />
         ) : (
           <>
-            <View style={styles.workoutHeader}>
-              <View style={styles.timerContainer}>
-                <WorkoutTimer
-                  onPause={() => setIsTimerPaused(true)}
-                  onResume={() => setIsTimerPaused(false)}
-                  onStop={cancelWorkout}
-                />
-                <View style={styles.timerControls}>
-                  <TouchableOpacity
-                    style={styles.timerControlButton}
-                    onPress={() => setIsTimerPaused(!isTimerPaused)}
-                  >
-                    <Ionicons
-                      name={isTimerPaused ? 'play' : 'pause'}
-                      size={24}
-                      color="#1E4D6B"
-                    />
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={styles.timerControlButton}
-                    onPress={cancelWorkout}
-                  >
-                    <Ionicons name="stop" size={24} color="#A67356" />
-                  </TouchableOpacity>
-                </View>
-              </View>
-            </View>
+            <WorkoutHeader
+              onPause={() => setIsTimerPaused(true)}
+              onResume={() => setIsTimerPaused(false)}
+              onStop={cancelWorkout}
+              isPaused={isTimerPaused}
+            />
             <ScrollView style={styles.exercisesContainer}>
               {activeWorkout?.exercises.map((exercise, exerciseIndex) => (
-                <View key={exercise.exerciseId} style={styles.exerciseCard}>
-                  <Text style={styles.exerciseName}>{exercise.name}</Text>
-                  <View style={styles.setsList}>
-                    {exercise.sets.map((set, setIndex) => (
-                      <TouchableOpacity
-                        key={setIndex}
-                        style={styles.setRow}
-                        onLongPress={() => deleteSet(exerciseIndex, setIndex)}
-                        delayLongPress={500}
-                      >
-                        <View style={styles.setCell}>
-                          <Text style={styles.setCellText}>
-                            {set.weight ? `${set.weight}kg` : '-'}
-                          </Text>
-                        </View>
-                        <View style={styles.setCell}>
-                          <Text style={styles.setCellText}>
-                            {set.reps}
-                          </Text>
-                        </View>
-                        <View style={styles.setCell}>
-                          <TextInput
-                            style={[
-                              styles.setCellInput,
-                              set.completed && styles.completedInput
-                            ]}
-                            value={set.actualWeight?.toString() || ''}
-                            onChangeText={(value) => updateSetWeight(exerciseIndex, setIndex, parseFloat(value) || 0)}
-                            keyboardType="numeric"
-                            placeholder="-"
-                            placeholderTextColor="#829AAF"
-                            editable={!set.completed}
-                          />
-                        </View>
-                        <View style={styles.setCell}>
-                          <TextInput
-                            style={[
-                              styles.setCellInput,
-                              set.completed && styles.completedInput
-                            ]}
-                            value={set.actualReps?.toString() || ''}
-                            onChangeText={(value) => updateSetReps(exerciseIndex, setIndex, parseInt(value) || 0)}
-                            keyboardType="numeric"
-                            placeholder="-"
-                            placeholderTextColor="#829AAF"
-                            editable={!set.completed}
-                          />
-                        </View>
-                        <View style={styles.setCell}>
-                          <TouchableOpacity
-                            style={[
-                              styles.setActionButton,
-                              set.completed && styles.completedSet,
-                            ]}
-                            onPress={() => completeSet(exerciseIndex, setIndex)}
-                          >
-                            <Text
-                              style={[
-                                styles.setActionText,
-                                set.completed && styles.completedSetText,
-                              ]}
-                            >
-                              {set.completed ? '✓' : 'P'}
-                            </Text>
-                          </TouchableOpacity>
-                        </View>
-                        <View style={styles.setCell}>
-                          <TouchableOpacity
-                            style={[
-                              styles.setActionButton,
-                              styles.failureButton,
-                              set.isFailure && styles.failureSet,
-                            ]}
-                            onPress={() => markSetAsFailure(exerciseIndex, setIndex)}
-                          >
-                            <Text
-                              style={[
-                                styles.setActionText,
-                                set.isFailure && styles.failureSetText,
-                              ]}
-                            >
-                              {set.isFailure ? '✓' : 'F'}
-                            </Text>
-                          </TouchableOpacity>
-                        </View>
-                      </TouchableOpacity>
-                    ))}
-                    <TouchableOpacity
-                      style={styles.addSetButton}
-                      onPress={() => addSet(exerciseIndex)}
-                    >
-                      <Ionicons name="add-circle" size={20} color="#739E82" />
-                      <Text style={styles.addSetText}>+</Text>
-                    </TouchableOpacity>
-                  </View>
-                </View>
+                <ExerciseCard
+                  key={exercise.exerciseId}
+                  exercise={exercise}
+                  exerciseIndex={exerciseIndex}
+                  onUpdateSetWeight={updateSetWeight}
+                  onUpdateSetReps={updateSetReps}
+                  onCompleteSet={completeSet}
+                  onMarkSetAsFailure={markSetAsFailure}
+                  onDeleteSet={deleteSet}
+                  onAddSet={addSet}
+                />
               ))}
             </ScrollView>
             <View style={styles.workoutFooter}>
@@ -533,11 +327,21 @@ const WorkoutScreen = () => {
       >
         <WorkoutTemplateEditor
           template={editingTemplate}
-          onSave={handleSaveTemplate}
-          onCancel={() => {
+          onSave={async (template) => {
+            if (editingTemplate) {
+              await StorageService.saveWorkoutTemplate(template);
+              const updatedTemplates = templates.map(t =>
+                t.id === editingTemplate.id ? template : t
+              );
+              setTemplates(updatedTemplates);
+            } else {
+              await StorageService.saveWorkoutTemplate(template);
+              const newTemplates = [...templates, template];
+              setTemplates(newTemplates);
+            }
             setShowTemplateEditor(false);
-            setEditingTemplate(undefined);
           }}
+          onCancel={() => setShowTemplateEditor(false)}
         />
       </Modal>
     </SafeAreaView>
@@ -583,202 +387,9 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     fontFamily: Platform.OS === 'ios' ? 'System' : 'sans-serif',
   },
-  templatesContainer: {
-    flex: 1,
-    padding: 16,
-  },
-  templateCard: {
-    backgroundColor: '#fff',
-    padding: 16,
-    borderRadius: 16,
-    marginBottom: 16,
-    elevation: 1,
-    shadowColor: '#2C3D4F',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.06,
-    shadowRadius: 4,
-  },
-  templateHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  templateName: {
-    fontSize: 20,
-    fontWeight: '600',
-    color: '#2C3D4F',
-    fontFamily: Platform.OS === 'ios' ? 'System' : 'sans-serif',
-  },
-  templateActions: {
-    flexDirection: 'row',
-    gap: 8,
-  },
-  actionButton: {
-    padding: 4,
-  },
-  actionButtonText: {
-    color: '#1E4D6B',
-    fontSize: 14,
-    fontWeight: '500',
-    fontFamily: Platform.OS === 'ios' ? 'System' : 'sans-serif',
-  },
-  deleteButton: {
-    marginLeft: 8,
-  },
-  deleteButtonText: {
-    color: '#A67356',
-  },
-  templateDescription: {
-    fontSize: 15,
-    color: '#829AAF',
-    marginBottom: 12,
-    fontFamily: Platform.OS === 'ios' ? 'System' : 'sans-serif',
-  },
-  templateDetails: {
-    flexDirection: 'row',
-    gap: 12,
-    marginBottom: 16,
-  },
-  detailText: {
-    fontSize: 14,
-    color: '#739E82',
-    fontFamily: Platform.OS === 'ios' ? 'System' : 'sans-serif',
-    fontWeight: '500',
-  },
-  startButton: {
-    backgroundColor: '#739E82',
-    padding: 12,
-    borderRadius: 8,
-    alignItems: 'center',
-  },
-  startButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
-    fontFamily: Platform.OS === 'ios' ? 'System' : 'sans-serif',
-  },
-  workoutHeader: {
-    padding: 16,
-    backgroundColor: '#fff',
-    borderBottomWidth: 1,
-    borderBottomColor: '#F5F5F0',
-  },
-  timerContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  timerControls: {
-    flexDirection: 'row',
-    gap: 16,
-  },
-  timerControlButton: {
-    padding: 8,
-  },
   exercisesContainer: {
     flex: 1,
     padding: 16,
-  },
-  exerciseCard: {
-    backgroundColor: '#fff',
-    padding: 16,
-    borderRadius: 16,
-    marginBottom: 16,
-    elevation: 1,
-    shadowColor: '#2C3D4F',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.06,
-    shadowRadius: 4,
-  },
-  exerciseName: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#2C3D4F',
-    marginBottom: 12,
-    fontFamily: Platform.OS === 'ios' ? 'System' : 'sans-serif',
-  },
-  setsList: {
-    marginTop: 12,
-  },
-  setRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#F5F5F0',
-    padding: 8,
-    borderRadius: 8,
-    marginBottom: 4,
-  },
-  setCell: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 4,
-  },
-  setCellText: {
-    fontSize: 14,
-    color: '#2C3D4F',
-    fontFamily: Platform.OS === 'ios' ? 'System' : 'sans-serif',
-  },
-  setCellInput: {
-    fontSize: 14,
-    color: '#2C3D4F',
-    fontFamily: Platform.OS === 'ios' ? 'System' : 'sans-serif',
-    textAlign: 'center',
-    backgroundColor: '#fff',
-    borderRadius: 4,
-    padding: 4,
-    width: '100%',
-  },
-  completedInput: {
-    backgroundColor: '#F5F5F0',
-    color: '#829AAF',
-  },
-  setActionButton: {
-    backgroundColor: '#F5F5F0',
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  setActionText: {
-    fontSize: 14,
-    color: '#2C3D4F',
-    fontWeight: '500',
-    fontFamily: Platform.OS === 'ios' ? 'System' : 'sans-serif',
-  },
-  completedSet: {
-    backgroundColor: '#739E82',
-  },
-  completedSetText: {
-    color: '#fff',
-  },
-  failureButton: {
-    backgroundColor: '#F5F5F0',
-  },
-  failureSet: {
-    backgroundColor: '#A67356',
-  },
-  failureSetText: {
-    color: '#fff',
-  },
-  addSetButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 4,
-    padding: 8,
-    backgroundColor: '#F5F5F0',
-    borderRadius: 8,
-    marginTop: 8,
-    alignSelf: 'center',
-  },
-  addSetText: {
-    fontSize: 16,
-    color: '#739E82',
-    fontWeight: '600',
-    fontFamily: Platform.OS === 'ios' ? 'System' : 'sans-serif',
   },
   workoutFooter: {
     flexDirection: 'row',
@@ -795,31 +406,6 @@ const styles = StyleSheet.create({
     borderRadius: 8,
   },
   finishButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
-    fontFamily: Platform.OS === 'ios' ? 'System' : 'sans-serif',
-  },
-  emptyState: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 32,
-  },
-  emptyStateText: {
-    fontSize: 18,
-    color: '#829AAF',
-    marginBottom: 16,
-    textAlign: 'center',
-    fontFamily: Platform.OS === 'ios' ? 'System' : 'sans-serif',
-  },
-  emptyStateButton: {
-    backgroundColor: '#1E4D6B',
-    paddingHorizontal: 24,
-    paddingVertical: 12,
-    borderRadius: 8,
-  },
-  emptyStateButtonText: {
     color: '#fff',
     fontSize: 16,
     fontWeight: '600',

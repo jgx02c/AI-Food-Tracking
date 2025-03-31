@@ -53,32 +53,65 @@ export interface WorkoutSet {
 export interface WorkoutExercise {
   exerciseId: string;
   name: string;
-  sets: WorkoutSet[];
-  restTime: number; // in seconds
-  notes?: string; // Optional notes about the exercise
+  sets: {
+    reps: number;
+    weight: number;
+    restTime: number;
+  }[];
+  notes?: string;
 }
 
 export interface WorkoutTemplate {
   id: string;
   name: string;
-  description?: string;
   exercises: WorkoutExercise[];
-  estimatedDuration: number; // in minutes
-  difficulty: 'beginner' | 'intermediate' | 'advanced';
-  muscleGroups: MuscleGroup[];
+  calories: number;
+}
+
+export interface CompletedSet {
+  reps: number;
+  weight?: number;
+  actualWeight?: number;
+  actualReps?: number;
+  completed: boolean;
+  isFailure?: boolean;
+}
+
+export interface CompletedExercise {
+  exerciseId: string;
+  name: string;
+  sets: CompletedSet[];
 }
 
 export interface ActiveWorkout {
   id: string;
   templateId: string;
+  template: WorkoutTemplate;
   startTime: Date;
   endTime?: Date;
-  exercises: WorkoutExercise[];
+  exercises: CompletedExercise[];
   status: 'inProgress' | 'completed' | 'cancelled';
-  notes?: string; // Optional notes about the workout
+  notes?: string;
 }
 
-export interface WorkoutSession extends ActiveWorkout {
+export interface WorkoutSession {
+  id: string;
+  templateId: string;
   date: string;
-  duration: number; // in seconds
+  exercises: CompletedExercise[];
+  duration: number;
+}
+
+export interface UserSettings {
+  dailyCalorieGoal: number;
+  dailyProteinGoal: number;
+  weightGoal: number;
+}
+
+export interface WorkoutEntry {
+  date: string;
+  name: string;
+  duration: number;
+  calories: number;
+  type: 'workout';
 } 

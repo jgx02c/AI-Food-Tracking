@@ -3,12 +3,19 @@ import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-nati
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { StorageService } from '../services/storage';
-import { WorkoutEntry, FoodEntry } from '../services/storage';
+import { FoodEntry } from '../services/storage';
+import { WorkoutEntry, ActiveWorkout } from '../types/workout';
 import { format } from 'date-fns';
+import { useNavigation } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { RootStackParamList } from '../types/navigation';
+
+type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
 const HistoryScreen = () => {
   const [entries, setEntries] = useState<(WorkoutEntry | FoodEntry)[]>([]);
   const [loading, setLoading] = useState(true);
+  const navigation = useNavigation<NavigationProp>();
 
   useEffect(() => {
     loadHistory();
@@ -34,6 +41,21 @@ const HistoryScreen = () => {
     }
   };
 
+  const handleWorkoutPress = async (entry: WorkoutEntry) => {
+    try {
+      const completedWorkouts = await StorageService.getCompletedWorkouts();
+      const workout = completedWorkouts.find(w => 
+        w.startTime.toISOString() === entry.date
+      );
+      
+      if (workout) {
+        navigation.navigate('WorkoutDetails', { workoutId: workout.id });
+      }
+    } catch (error) {
+      console.error('Error loading workout details:', error);
+    }
+  };
+
   const renderEntry = (entry: WorkoutEntry | FoodEntry) => {
     const date = new Date(entry.date);
     const isWorkout = 'type' in entry;
@@ -42,6 +64,7 @@ const HistoryScreen = () => {
       <TouchableOpacity 
         key={`${isWorkout ? 'workout' : 'food'}-${entry.date}`}
         style={styles.entryCard}
+        onPress={() => isWorkout && handleWorkoutPress(entry as WorkoutEntry)}
       >
         <View style={styles.entryHeader}>
           <View style={styles.entryIcon}>
@@ -53,7 +76,7 @@ const HistoryScreen = () => {
           </View>
           <View style={styles.entryInfo}>
             <Text style={styles.entryTitle}>
-              {isWorkout ? entry.name : entry.foodName}
+              {isWorkout ? entry.name : entry.name}
             </Text>
             <Text style={styles.entryDate}>
               {format(date, 'MMM d, yyyy h:mm a')}
