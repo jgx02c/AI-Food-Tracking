@@ -86,7 +86,6 @@ const HistoryScreen = () => {
         {isWorkout ? (
           <View style={styles.workoutDetails}>
             <Text style={styles.detailText}>Duration: {entry.duration} minutes</Text>
-            <Text style={styles.detailText}>Calories: {entry.calories}</Text>
           </View>
         ) : (
           <View style={styles.foodDetails}>

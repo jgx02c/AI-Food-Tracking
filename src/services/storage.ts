@@ -45,11 +45,21 @@ export const StorageService = {
   // Workout Templates
   async getWorkoutTemplates(): Promise<WorkoutTemplate[]> {
     try {
-      const templates = await AsyncStorage.getItem(STORAGE_KEYS.WORKOUT_TEMPLATES);
-      return templates ? JSON.parse(templates) : [];
+      const templatesJson = await AsyncStorage.getItem(STORAGE_KEYS.WORKOUT_TEMPLATES);
+      return templatesJson ? JSON.parse(templatesJson) : [];
     } catch (error) {
       console.error('Error getting workout templates:', error);
       return [];
+    }
+  },
+
+  async getWorkoutTemplate(templateId: string): Promise<WorkoutTemplate | null> {
+    try {
+      const templates = await this.getWorkoutTemplates();
+      return templates.find(t => t.id === templateId) || null;
+    } catch (error) {
+      console.error('Error getting workout template:', error);
+      return null;
     }
   },
 

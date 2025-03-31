@@ -29,9 +29,6 @@ const WorkoutsSection = ({ workouts, onWorkoutPress }: WorkoutsSectionProps) => 
             <Text style={styles.workoutDuration}>
               Duration: {workout.duration} minutes
             </Text>
-            <Text style={styles.workoutCalories}>
-              Calories: {workout.calories}
-            </Text>
           </TouchableOpacity>
         ))
       )}

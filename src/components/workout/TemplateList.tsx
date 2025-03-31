@@ -50,9 +50,6 @@ const TemplateList = ({
               <Text style={styles.detailText}>
                 {template.exercises.length} exercises
               </Text>
-              <Text style={styles.detailText}>
-                {template.calories} calories
-              </Text>
             </View>
             <TouchableOpacity
               style={styles.startButton}

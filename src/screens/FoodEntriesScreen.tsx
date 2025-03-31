@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, RefreshControl, Platform, ActionSheetIOS } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, RefreshControl, Platform, ActionSheetIOS, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { FoodEntry } from '../services/storage';
@@ -25,6 +25,7 @@ const FoodEntriesScreen = () => {
     older: [],
   });
   const [refreshing, setRefreshing] = useState(false);
+  const [swipedEntryId, setSwipedEntryId] = useState<string | null>(null);
 
   const loadEntries = async () => {
     try {
@@ -95,27 +96,79 @@ const FoodEntriesScreen = () => {
     );
   };
 
-  const renderEntry = (entry: FoodEntry) => (
-    <View key={entry.id} style={styles.entryCard}>
-      <View style={styles.entryHeader}>
-        <View style={styles.entryIcon}>
-          <Ionicons name="restaurant-outline" size={24} color="#1E4D6B" />
-        </View>
-        <View style={styles.entryInfo}>
-          <Text style={styles.entryTitle}>{entry.name}</Text>
-          <Text style={styles.entryTime}>
-            {format(new Date(entry.date), 'h:mm a')}
-          </Text>
-        </View>
+  const handleEntryPress = (entryId: string) => {
+    setSwipedEntryId(swipedEntryId === entryId ? null : entryId);
+  };
+
+  const handleDelete = async (entryId: string) => {
+    Alert.alert(
+      'Delete Entry',
+      'Are you sure you want to delete this food entry?',
+      [
+        {
+          text: 'Cancel',
+          style: 'cancel',
+          onPress: () => {
+            setSwipedEntryId(null);
+          },
+        },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await FoodEntriesService.deleteFoodEntry(entryId);
+              await loadEntries();
+              setSwipedEntryId(null);
+            } catch (error) {
+              console.error('Error deleting food entry:', error);
+              Alert.alert('Error', 'Failed to delete food entry');
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  const renderEntry = (entry: FoodEntry) => {
+    const isSwiped = swipedEntryId === entry.id;
+
+    return (
+      <View key={entry.id} style={styles.entryContainer}>
+        <TouchableOpacity
+          style={[
+            styles.entryCard,
+            isSwiped && styles.entryCardSwiped
+          ]}
+          onPress={() => handleEntryPress(entry.id)}
+        >
+          <View style={styles.entryHeader}>
+            <View style={styles.entryIcon}>
+              <Ionicons name="restaurant-outline" size={24} color="#1E4D6B" />
+            </View>
+            <View style={styles.entryInfo}>
+              <Text style={styles.entryTitle}>{entry.name}</Text>
+              <Text style={styles.entryTime}>
+                {format(new Date(entry.date), 'h:mm a')}
+              </Text>
+            </View>
+          </View>
+          <View style={styles.entryDetails}>
+            <Text style={styles.detailText}>Calories: {entry.calories}</Text>
+            <Text style={styles.detailText}>Protein: {entry.protein}g</Text>
+            <Text style={styles.detailText}>Carbs: {entry.carbs}g</Text>
+            <Text style={styles.detailText}>Fat: {entry.fat}g</Text>
+          </View>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.deleteButton, isSwiped && styles.deleteButtonVisible]}
+          onPress={() => handleDelete(entry.id)}
+        >
+          <Ionicons name="trash-outline" size={24} color="#FFFFFF" />
+        </TouchableOpacity>
       </View>
-      <View style={styles.entryDetails}>
-        <Text style={styles.detailText}>Calories: {entry.calories}</Text>
-        <Text style={styles.detailText}>Protein: {entry.protein}g</Text>
-        <Text style={styles.detailText}>Carbs: {entry.carbs}g</Text>
-        <Text style={styles.detailText}>Fat: {entry.fat}g</Text>
-      </View>
-    </View>
-  );
+    );
+  };
 
   const renderSection = (title: string, entries: FoodEntry[]) => {
     if (entries.length === 0) return null;
@@ -204,16 +257,23 @@ const styles = StyleSheet.create({
     marginBottom: 12,
     paddingLeft: 4,
   },
+  entryContainer: {
+    position: 'relative',
+    marginBottom: 16,
+  },
   entryCard: {
     backgroundColor: '#FFFFFF',
     borderRadius: 12,
     padding: 16,
-    marginBottom: 16,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 3,
+    transform: [{ translateX: 0 }],
+  },
+  entryCardSwiped: {
+    transform: [{ translateX: -100 }],
   },
   entryHeader: {
     flexDirection: 'row',
@@ -264,6 +324,21 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#7F8C8D',
     marginTop: 8,
+  },
+  deleteButton: {
+    position: 'absolute',
+    right: 0,
+    top: 0,
+    bottom: 0,
+    width: 100,
+    backgroundColor: '#FF3B30',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderRadius: 12,
+    opacity: 0,
+  },
+  deleteButtonVisible: {
+    opacity: 1,
   },
 });
 

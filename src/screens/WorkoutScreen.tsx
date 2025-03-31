@@ -9,41 +9,61 @@ import {
   StatusBar,
   Modal,
   Alert,
+  ActionSheetIOS,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { Ionicons } from '@expo/vector-icons';
 import { WorkoutTemplate, ActiveWorkout } from '../types/workout';
 import { StorageService } from '../services/storage';
 import WorkoutTemplateEditor from '../components/workout/WorkoutTemplateEditor';
 import WorkoutCompletionScreen from '../components/WorkoutCompletionScreen';
-
 import TemplateList from '../components/workout/TemplateList';
-import ExerciseCard from '../components/workout/ExerciseCard';
-import WorkoutHeader from '../components/workout/WorkoutHeader';
+import WorkoutListView from '../components/workout/WorkoutListView';
+import ActiveWorkoutView from '../components/workout/ActiveWorkoutView';
+import WorkoutHeaderTabs from '../components/workout/WorkoutHeaderTabs';
+import { format, isToday, isYesterday, isThisWeek, subWeeks } from 'date-fns';
+import { useNavigation } from '@react-navigation/native';
+
+type TabType = 'templates' | 'workouts';
 
 const WorkoutScreen = () => {
+  const navigation = useNavigation();
   const [templates, setTemplates] = useState<WorkoutTemplate[]>([]);
   const [activeWorkout, setActiveWorkout] = useState<ActiveWorkout | null>(null);
-  const [showTemplates, setShowTemplates] = useState(true);
   const [showTemplateEditor, setShowTemplateEditor] = useState(false);
   const [editingTemplate, setEditingTemplate] = useState<WorkoutTemplate | undefined>();
   const [isTimerPaused, setIsTimerPaused] = useState(false);
   const [showCompletionScreen, setShowCompletionScreen] = useState(false);
+  const [activeTab, setActiveTab] = useState<TabType>('templates');
+  const [completedWorkouts, setCompletedWorkouts] = useState<ActiveWorkout[]>([]);
 
   useEffect(() => {
     loadTemplates();
     loadActiveWorkout();
+    loadCompletedWorkouts();
   }, []);
 
   const loadTemplates = async () => {
     const savedTemplates = await StorageService.getWorkoutTemplates();
+    console.log('Loaded templates:', savedTemplates);
     setTemplates(savedTemplates);
+  };
+
+  const loadCompletedWorkouts = async () => {
+    const workouts = await StorageService.getCompletedWorkouts();
+    setCompletedWorkouts(workouts);
   };
 
   const loadActiveWorkout = async () => {
     const savedWorkout = await StorageService.getActiveWorkout();
     if (savedWorkout) {
-      setActiveWorkout(savedWorkout);
-      setShowTemplates(false);
+      // Only set active workout if it's in progress
+      if (savedWorkout.status === 'inProgress') {
+        setActiveWorkout(savedWorkout);
+      } else {
+        // Clear any completed or cancelled workouts
+        await StorageService.saveActiveWorkout(null);
+      }
     }
   };
 
@@ -97,7 +117,6 @@ const WorkoutScreen = () => {
 
     await StorageService.saveActiveWorkout(newWorkout);
     setActiveWorkout(newWorkout);
-    setShowTemplates(false);
   };
 
   const updateSetWeight = async (exerciseIndex: number, setIndex: number, weight: number) => {
@@ -226,20 +245,38 @@ const WorkoutScreen = () => {
   const finishWorkout = async () => {
     if (!activeWorkout) return;
 
-    const completedWorkout: ActiveWorkout = {
-      ...activeWorkout,
-      endTime: new Date(),
-      status: 'completed' as const,
-    };
-    setActiveWorkout(completedWorkout);
-    await StorageService.saveActiveWorkout(completedWorkout);
-    await StorageService.saveCompletedWorkout(completedWorkout);
-    setShowCompletionScreen(true);
+    try {
+      // Create completed workout with current template data
+      const completedWorkout: ActiveWorkout = {
+        ...activeWorkout,
+        endTime: new Date(),
+        status: 'completed' as const,
+      };
+
+      // Save the completed workout
+      await StorageService.saveCompletedWorkout(completedWorkout);
+      
+      // Clear the active workout
+      await StorageService.saveActiveWorkout(null);
+      
+      // Update state
+      setActiveWorkout(completedWorkout);
+      setShowCompletionScreen(true);
+    } catch (error) {
+      console.error('Error finishing workout:', error);
+      Alert.alert(
+        'Error',
+        'Failed to save the completed workout. Please try again.',
+        [{ text: 'OK' }]
+      );
+    }
   };
 
   const handleWorkoutCompletion = () => {
     setShowCompletionScreen(false);
-    setShowTemplates(true);
+    setActiveWorkout(null);
+    loadCompletedWorkouts();
+    setActiveTab('workouts'); // Switch to workouts tab to show the completed workout
   };
 
   const cancelWorkout = async () => {
@@ -252,70 +289,117 @@ const WorkoutScreen = () => {
     };
     setActiveWorkout(cancelledWorkout);
     await StorageService.saveActiveWorkout(cancelledWorkout);
-    setShowTemplates(true);
+    setActiveWorkout(null);
+  };
+
+  const showAddOptions = () => {
+    ActionSheetIOS.showActionSheetWithOptions(
+      {
+        options: ['Cancel', 'Add Template'],
+        cancelButtonIndex: 0,
+      },
+      (buttonIndex: number) => {
+        if (buttonIndex === 1) {
+          setEditingTemplate(undefined);
+          setShowTemplateEditor(true);
+        }
+      }
+    );
+  };
+
+  const handleStopTimer = () => {
+    Alert.alert(
+      'Stop Workout',
+      'Are you sure you want to stop this workout? This will cancel the current session.',
+      [
+        {
+          text: 'Cancel',
+          style: 'cancel',
+        },
+        {
+          text: 'Stop',
+          style: 'destructive',
+          onPress: () => {
+            cancelWorkout();
+            setActiveTab('templates'); // Switch back to templates tab
+          },
+        },
+      ]
+    );
+  };
+
+  const groupedWorkouts = {
+    today: completedWorkouts.filter(workout => isToday(new Date(workout.startTime))),
+    yesterday: completedWorkouts.filter(workout => isYesterday(new Date(workout.startTime))),
+    thisWeek: completedWorkouts.filter(workout => {
+      const workoutDate = new Date(workout.startTime);
+      return isThisWeek(workoutDate) && !isToday(workoutDate) && !isYesterday(workoutDate);
+    }),
+    lastWeek: completedWorkouts.filter(workout => {
+      const workoutDate = new Date(workout.startTime);
+      const now = new Date();
+      const lastWeekStart = subWeeks(now, 1);
+      const lastWeekEnd = subWeeks(now, 0);
+      return workoutDate >= lastWeekStart && workoutDate < lastWeekEnd;
+    }),
+    older: completedWorkouts.filter(workout => {
+      const workoutDate = new Date(workout.startTime);
+      const now = new Date();
+      const lastWeekStart = subWeeks(now, 1);
+      return workoutDate < lastWeekStart;
+    }),
   };
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['top']}>
       <StatusBar barStyle="dark-content" backgroundColor="#F5F5F0" />
       <View style={styles.container}>
-        {showTemplates ? (
-          <>
-            <View style={styles.header}>
-              <Text style={styles.title}>Workout Templates</Text>
-              <TouchableOpacity
-                style={styles.addButton}
-                onPress={() => {
-                  setEditingTemplate(undefined);
-                  setShowTemplateEditor(true);
-                }}
-              >
-                <Text style={styles.addButtonText}>New Template</Text>
-              </TouchableOpacity>
-            </View>
-            <TemplateList
-              templates={templates}
-              onEditTemplate={handleEditTemplate}
-              onDeleteTemplate={handleDeleteTemplate}
-              onStartWorkout={startWorkout}
+        {activeWorkout ? (
+          showCompletionScreen ? (
+            <WorkoutCompletionScreen
+              workout={activeWorkout}
+              onFinish={handleWorkoutCompletion}
             />
-          </>
-        ) : showCompletionScreen ? (
-          <WorkoutCompletionScreen
-            workout={activeWorkout!}
-            onFinish={handleWorkoutCompletion}
-          />
-        ) : (
-          <>
-            <WorkoutHeader
+          ) : (
+            <ActiveWorkoutView
+              workout={activeWorkout}
+              isTimerPaused={isTimerPaused}
               onPause={() => setIsTimerPaused(true)}
               onResume={() => setIsTimerPaused(false)}
-              onStop={cancelWorkout}
-              isPaused={isTimerPaused}
+              onStop={handleStopTimer}
+              onUpdateSetWeight={updateSetWeight}
+              onUpdateSetReps={updateSetReps}
+              onCompleteSet={completeSet}
+              onMarkSetAsFailure={markSetAsFailure}
+              onDeleteSet={deleteSet}
+              onAddSet={addSet}
+              onFinish={finishWorkout}
             />
-            <ScrollView style={styles.exercisesContainer}>
-              {activeWorkout?.exercises.map((exercise, exerciseIndex) => (
-                <ExerciseCard
-                  key={exercise.exerciseId}
-                  exercise={exercise}
-                  exerciseIndex={exerciseIndex}
-                  onUpdateSetWeight={updateSetWeight}
-                  onUpdateSetReps={updateSetReps}
-                  onCompleteSet={completeSet}
-                  onMarkSetAsFailure={markSetAsFailure}
-                  onDeleteSet={deleteSet}
-                  onAddSet={addSet}
+          )
+        ) : (
+          <>
+            <WorkoutHeaderTabs
+              activeTab={activeTab}
+              onTabChange={setActiveTab}
+              onAddPress={showAddOptions}
+            />
+            {activeTab === 'templates' ? (
+              templates.length === 0 ? (
+                <View style={styles.emptyState}>
+                  <Ionicons name="barbell-outline" size={48} color="#D9D9D9" />
+                  <Text style={styles.emptyStateText}>No templates yet</Text>
+                </View>
+              ) : (
+                <TemplateList
+                  templates={templates}
+                  onEditTemplate={handleEditTemplate}
+                  onDeleteTemplate={handleDeleteTemplate}
+                  onStartWorkout={startWorkout}
                 />
-              ))}
-            </ScrollView>
-            <View style={styles.workoutFooter}>
-              <TouchableOpacity
-                style={styles.finishButton}
-                onPress={finishWorkout}
-              >
-                <Text style={styles.finishButtonText}>Finish Workout</Text>
-              </TouchableOpacity>
-            </View>
+              )
+            ) : (
+              <WorkoutListView groupedWorkouts={groupedWorkouts} />
+            )}
           </>
         )}
       </View>
@@ -357,59 +441,15 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#F5F5F0',
   },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+  emptyState: {
     alignItems: 'center',
-    padding: 16,
-    paddingBottom: 8,
+    justifyContent: 'center',
+    padding: 32,
   },
-  title: {
-    fontSize: 28,
-    fontWeight: '700',
-    color: '#2C3D4F',
-    fontFamily: Platform.OS === 'ios' ? 'System' : 'sans-serif',
-    letterSpacing: -0.5,
-    flex: 1,
-    marginRight: 16,
-  },
-  addButton: {
-    backgroundColor: '#1E4D6B',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 8,
-    minWidth: 120,
-    alignItems: 'center',
-  },
-  addButtonText: {
-    color: '#fff',
+  emptyStateText: {
     fontSize: 16,
-    fontWeight: '600',
-    fontFamily: Platform.OS === 'ios' ? 'System' : 'sans-serif',
-  },
-  exercisesContainer: {
-    flex: 1,
-    padding: 16,
-  },
-  workoutFooter: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    padding: 16,
-    backgroundColor: '#fff',
-    borderTopWidth: 1,
-    borderTopColor: '#F5F5F0',
-  },
-  finishButton: {
-    backgroundColor: '#1E4D6B',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 8,
-  },
-  finishButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
-    fontFamily: Platform.OS === 'ios' ? 'System' : 'sans-serif',
+    color: '#7F8C8D',
+    marginTop: 8,
   },
 });
 

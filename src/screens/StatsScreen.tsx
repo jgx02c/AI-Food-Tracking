@@ -77,7 +77,6 @@ const StatsScreen = () => {
                   </Text>
                 </View>
               </View>
-              <Text style={styles.cardDetail}>Calories: {workout.calories}</Text>
             </View>
           ))
         )}
