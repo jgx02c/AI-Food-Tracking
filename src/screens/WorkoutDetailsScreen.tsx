@@ -97,6 +97,14 @@ const WorkoutDetailsScreen = () => {
         }
       >
         <View style={styles.header}>
+          <TouchableOpacity 
+            style={styles.backButton}
+            onPress={() => navigation.goBack()}
+          >
+            <Ionicons name="chevron-back" size={24} color="#2C3E50" />
+            <Text style={styles.backButtonText}>Back</Text>
+          </TouchableOpacity>
+          <Text style={styles.title}>{workout.template?.name || 'Workout Details'}</Text>
           <Text style={styles.date}>{new Date(workout.startTime).toLocaleDateString()}</Text>
         </View>
 
@@ -124,17 +132,44 @@ const WorkoutDetailsScreen = () => {
           <Text style={styles.sectionTitle}>Exercises</Text>
           {workout.exercises.map(exercise => (
             <View key={exercise.exerciseId} style={styles.exerciseCard}>
-              <Text style={styles.exerciseName}>{exercise.name}</Text>
+              <View style={styles.exerciseHeader}>
+                <View style={styles.exerciseIcon}>
+                  <Ionicons name="barbell-outline" size={24} color="#2C3E50" />
+                </View>
+                <Text style={styles.exerciseName}>{exercise.name}</Text>
+              </View>
               <View style={styles.setsContainer}>
                 {exercise.sets.map((set, index) => (
                   <View key={index} style={styles.setItem}>
-                    <Text style={styles.setNumber}>Set {index + 1}</Text>
-                    <Text style={styles.setDetails}>
-                      {set.actualReps || set.reps} reps
-                      {set.actualWeight ? ` @ ${set.actualWeight}kg` : ''}
-                    </Text>
-                    <View style={[styles.completionIndicator, set.completed && styles.completedSet]}>
-                      {set.completed && <Ionicons name="checkmark" size={16} color="#FFFFFF" />}
+                    <View style={styles.setHeader}>
+                      <Text style={styles.setNumber}>Set {index + 1}</Text>
+                      <View style={[
+                        styles.setStatus,
+                        set.completed ? styles.setStatusSuccess : styles.setStatusFailed
+                      ]}>
+                        <Ionicons 
+                          name={set.completed ? "checkmark-circle" : "close-circle"} 
+                          size={16} 
+                          color="#FFFFFF" 
+                        />
+                        <Text style={styles.setStatusText}>
+                          {set.completed ? "Completed" : "Failed"}
+                        </Text>
+                      </View>
+                    </View>
+                    <View style={styles.setDetails}>
+                      <View style={styles.setDetailRow}>
+                        <Text style={styles.setDetailLabel}>Goal:</Text>
+                        <Text style={styles.setDetailValue}>
+                          {set.reps} reps @ {set.weight}kg
+                        </Text>
+                      </View>
+                      <View style={styles.setDetailRow}>
+                        <Text style={styles.setDetailLabel}>Actual:</Text>
+                        <Text style={styles.setDetailValue}>
+                          {set.actualReps || set.reps} reps @ {set.actualWeight || set.weight}kg
+                        </Text>
+                      </View>
                     </View>
                   </View>
                 ))}
@@ -178,6 +213,22 @@ const styles = StyleSheet.create({
   },
   header: {
     marginBottom: 20,
+  },
+  backButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  backButtonText: {
+    marginLeft: 4,
+    color: '#2C3E50',
+    fontSize: 16,
+  },
+  title: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#2C3E50',
+    marginBottom: 8,
   },
   date: {
     fontSize: 16,
@@ -230,42 +281,79 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 3,
   },
+  exerciseHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  exerciseIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#F8F9FA',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
   exerciseName: {
     fontSize: 18,
     fontWeight: '600',
     color: '#2C3E50',
-    marginBottom: 12,
   },
   setsContainer: {
-    gap: 8,
+    gap: 12,
   },
   setItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 8,
     backgroundColor: '#F8F9FA',
     borderRadius: 8,
+    padding: 12,
+  },
+  setHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
   },
   setNumber: {
-    fontSize: 14,
+    fontSize: 16,
+    fontWeight: '600',
     color: '#2C3E50',
-    width: 60,
+  },
+  setStatus: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  setStatusSuccess: {
+    backgroundColor: '#2ECC71',
+  },
+  setStatusFailed: {
+    backgroundColor: '#E74C3C',
+  },
+  setStatusText: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: '500',
+    marginLeft: 4,
   },
   setDetails: {
-    fontSize: 14,
-    color: '#2C3E50',
-    flex: 1,
+    gap: 4,
   },
-  completionIndicator: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    backgroundColor: '#E0E0E0',
-    justifyContent: 'center',
+  setDetailRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
   },
-  completedSet: {
-    backgroundColor: '#2ECC71',
+  setDetailLabel: {
+    fontSize: 14,
+    color: '#7F8C8D',
+  },
+  setDetailValue: {
+    fontSize: 14,
+    color: '#2C3E50',
+    fontWeight: '500',
   },
   deleteButton: {
     backgroundColor: '#E74C3C',

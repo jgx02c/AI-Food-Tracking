@@ -36,6 +36,9 @@ const WorkoutScreen = () => {
   const [showCompletionScreen, setShowCompletionScreen] = useState(false);
   const [activeTab, setActiveTab] = useState<TabType>('templates');
   const [completedWorkouts, setCompletedWorkouts] = useState<ActiveWorkout[]>([]);
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(true);
+  const ITEMS_PER_PAGE = 20;
 
   useEffect(() => {
     loadTemplates();
@@ -49,9 +52,30 @@ const WorkoutScreen = () => {
     setTemplates(savedTemplates);
   };
 
-  const loadCompletedWorkouts = async () => {
-    const workouts = await StorageService.getCompletedWorkouts();
-    setCompletedWorkouts(workouts);
+  const loadCompletedWorkouts = async (pageNum: number = 1) => {
+    try {
+      const allWorkouts = await StorageService.getCompletedWorkouts();
+      // Filter out deleted workouts and sort by date
+      const validWorkouts = allWorkouts
+        .filter(workout => workout && workout.template)
+        .sort((a, b) => new Date(b.startTime).getTime() - new Date(a.startTime).getTime());
+
+      // Calculate pagination
+      const startIndex = (pageNum - 1) * ITEMS_PER_PAGE;
+      const endIndex = startIndex + ITEMS_PER_PAGE;
+      const paginatedWorkouts = validWorkouts.slice(startIndex, endIndex);
+      
+      setHasMore(endIndex < validWorkouts.length);
+      setCompletedWorkouts(prev => pageNum === 1 ? paginatedWorkouts : [...prev, ...paginatedWorkouts]);
+      setPage(pageNum);
+    } catch (error) {
+      console.error('Error loading completed workouts:', error);
+    }
+  };
+
+  const handleLoadMore = () => {
+    if (!hasMore) return;
+    loadCompletedWorkouts(page + 1);
   };
 
   const loadActiveWorkout = async () => {
@@ -275,7 +299,7 @@ const WorkoutScreen = () => {
   const handleWorkoutCompletion = () => {
     setShowCompletionScreen(false);
     setActiveWorkout(null);
-    loadCompletedWorkouts();
+    loadCompletedWorkouts(1); // Reset to first page when completing a workout
     setActiveTab('workouts'); // Switch to workouts tab to show the completed workout
   };
 
@@ -329,18 +353,19 @@ const WorkoutScreen = () => {
   };
 
   const groupedWorkouts = {
-    today: completedWorkouts.filter(workout => isToday(new Date(workout.startTime))),
-    yesterday: completedWorkouts.filter(workout => isYesterday(new Date(workout.startTime))),
-    thisWeek: completedWorkouts.filter(workout => {
+    today: completedWorkouts.filter(workout => {
       const workoutDate = new Date(workout.startTime);
-      return isThisWeek(workoutDate) && !isToday(workoutDate) && !isYesterday(workoutDate);
+      return isToday(workoutDate);
     }),
-    lastWeek: completedWorkouts.filter(workout => {
+    yesterday: completedWorkouts.filter(workout => {
+      const workoutDate = new Date(workout.startTime);
+      return isYesterday(workoutDate);
+    }),
+    pastWeek: completedWorkouts.filter(workout => {
       const workoutDate = new Date(workout.startTime);
       const now = new Date();
       const lastWeekStart = subWeeks(now, 1);
-      const lastWeekEnd = subWeeks(now, 0);
-      return workoutDate >= lastWeekStart && workoutDate < lastWeekEnd;
+      return workoutDate >= lastWeekStart && !isToday(workoutDate) && !isYesterday(workoutDate);
     }),
     older: completedWorkouts.filter(workout => {
       const workoutDate = new Date(workout.startTime);
@@ -398,7 +423,11 @@ const WorkoutScreen = () => {
                 />
               )
             ) : (
-              <WorkoutListView groupedWorkouts={groupedWorkouts} />
+              <WorkoutListView 
+                groupedWorkouts={groupedWorkouts}
+                onLoadMore={handleLoadMore}
+                hasMore={hasMore}
+              />
             )}
           </>
         )}

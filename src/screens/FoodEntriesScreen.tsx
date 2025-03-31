@@ -204,6 +204,12 @@ const FoodEntriesScreen = () => {
           <View style={styles.emptyState}>
             <Ionicons name="restaurant-outline" size={48} color="#D9D9D9" />
             <Text style={styles.emptyStateText}>No food entries yet</Text>
+            <TouchableOpacity 
+              style={styles.createButton}
+              onPress={() => navigation.navigate('ManualFoodEntry')}
+            >
+              <Text style={styles.createButtonText}>Create Your First Food Entry</Text>
+            </TouchableOpacity>
           </View>
         ) : (
           <>
@@ -324,6 +330,18 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#7F8C8D',
     marginTop: 8,
+    marginBottom: 16,
+  },
+  createButton: {
+    backgroundColor: '#1E4D6B',
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderRadius: 8,
+  },
+  createButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '600',
   },
   deleteButton: {
     position: 'absolute',

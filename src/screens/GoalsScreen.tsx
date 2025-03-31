@@ -105,8 +105,7 @@ const GoalsScreen = () => {
           style={styles.addButton}
           onPress={() => navigation.navigate('CreateGoal')}
         >
-          <Ionicons name="add-circle-outline" size={24} color="#2C3E50" />
-          <Text style={styles.addButtonText}>New Goal</Text>
+          <Ionicons name="add-circle-outline" size={24} color="#1E4D6B" />
         </TouchableOpacity>
       </View>
 
@@ -156,21 +155,7 @@ const styles = StyleSheet.create({
     color: '#2C3E50',
   },
   addButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#FFFFFF',
     padding: 8,
-    borderRadius: 8,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  addButtonText: {
-    marginLeft: 4,
-    color: '#2C3E50',
-    fontWeight: '500',
   },
   container: {
     flex: 1,
@@ -200,7 +185,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   goalTitle: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: '600',
     color: '#2C3E50',
     marginLeft: 8,
@@ -208,7 +193,7 @@ const styles = StyleSheet.create({
   categoryBadge: {
     paddingHorizontal: 8,
     paddingVertical: 4,
-    borderRadius: 12,
+    borderRadius: 4,
   },
   categoryText: {
     color: '#FFFFFF',
@@ -220,16 +205,17 @@ const styles = StyleSheet.create({
   },
   progressBar: {
     height: 8,
-    backgroundColor: '#ECF0F1',
+    backgroundColor: '#F8F9FA',
     borderRadius: 4,
     overflow: 'hidden',
+    marginBottom: 4,
   },
   progressFill: {
     height: '100%',
-    backgroundColor: '#2ECC71',
+    backgroundColor: '#1E4D6B',
+    borderRadius: 4,
   },
   progressText: {
-    marginTop: 4,
     fontSize: 14,
     color: '#7F8C8D',
   },
@@ -265,12 +251,12 @@ const styles = StyleSheet.create({
     backgroundColor: '#2ECC71',
     paddingHorizontal: 8,
     paddingVertical: 4,
-    borderRadius: 12,
+    borderRadius: 4,
   },
   completedText: {
     marginLeft: 4,
-    color: '#FFFFFF',
     fontSize: 12,
+    color: '#FFFFFF',
     fontWeight: '500',
   },
   emptyState: {
@@ -279,14 +265,14 @@ const styles = StyleSheet.create({
     padding: 32,
   },
   emptyStateText: {
-    fontSize: 18,
+    fontSize: 16,
     color: '#7F8C8D',
-    marginTop: 16,
-    marginBottom: 24,
+    marginTop: 8,
+    marginBottom: 16,
   },
   createButton: {
-    backgroundColor: '#2ECC71',
-    paddingHorizontal: 24,
+    backgroundColor: '#1E4D6B',
+    paddingHorizontal: 20,
     paddingVertical: 12,
     borderRadius: 8,
   },

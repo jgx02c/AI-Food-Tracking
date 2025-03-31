@@ -31,6 +31,7 @@ export type RootStackParamList = {
   BackupSettings: undefined;
   AboutSettings: undefined;
   LegalSettings: undefined;
+  AddWeight: undefined;
 };
 
 export type MainTabParamList = {

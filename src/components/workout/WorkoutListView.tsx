@@ -5,109 +5,124 @@ import { ActiveWorkout } from '../../types/workout';
 import { format } from 'date-fns';
 import { useNavigation } from '@react-navigation/native';
 
+const formatDuration = (duration: number) => {
+  const minutes = Math.floor(duration / 60);
+  const seconds = duration % 60;
+  return `${minutes}:${seconds.toString().padStart(2, '0')}`;
+};
+
 interface WorkoutListViewProps {
   groupedWorkouts: {
     today: ActiveWorkout[];
     yesterday: ActiveWorkout[];
-    thisWeek: ActiveWorkout[];
-    lastWeek: ActiveWorkout[];
+    pastWeek: ActiveWorkout[];
     older: ActiveWorkout[];
   };
+  onLoadMore: () => void;
+  hasMore: boolean;
 }
 
-const WorkoutListView = ({ groupedWorkouts }: WorkoutListViewProps) => {
+const WorkoutListView: React.FC<WorkoutListViewProps> = ({ 
+  groupedWorkouts, 
+  onLoadMore,
+  hasMore 
+}) => {
   const navigation = useNavigation();
 
-  const renderWorkoutEntry = (workout: ActiveWorkout) => {
-    if (!workout || !workout.template) {
-      console.warn('Invalid workout data:', workout);
-      return null;
-    }
-
-    return (
-      <TouchableOpacity 
-        key={workout.id} 
-        style={styles.workoutCard}
-        onPress={() => navigation.navigate('WorkoutDetails', { workoutId: workout.id })}
-      >
-        <View style={styles.workoutHeader}>
-          <View style={styles.workoutIcon}>
-            <Ionicons name="barbell-outline" size={24} color="#1E4D6B" />
-          </View>
-          <View style={styles.workoutInfo}>
-            <Text style={styles.workoutTitle}>{workout.template.name || 'Unnamed Workout'}</Text>
-            <Text style={styles.workoutTime}>
-              {format(new Date(workout.startTime), 'h:mm a')}
-            </Text>
-          </View>
-        </View>
-        <View style={styles.workoutDetails}>
-          <Text style={styles.detailText}>
-            {workout.exercises.length} exercises
-          </Text>
-          <Text style={styles.detailText}>
-            {workout.exercises.reduce((acc, ex) => acc + ex.sets.length, 0)} sets
-          </Text>
-        </View>
-      </TouchableOpacity>
-    );
+  const handleWorkoutPress = (workout: ActiveWorkout) => {
+    navigation.navigate('WorkoutDetails', { workoutId: workout.id });
   };
 
-  const renderSection = (title: string, workouts: ActiveWorkout[]) => {
+  const renderWorkoutGroup = (title: string, workouts: ActiveWorkout[]) => {
     if (workouts.length === 0) return null;
-    
+
     return (
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>{title}</Text>
-        {workouts.map(renderWorkoutEntry)}
+      <View style={styles.groupContainer}>
+        <View style={styles.groupHeader}>
+          <Text style={styles.groupTitle}>{title}</Text>
+        </View>
+        <View style={styles.divider} />
+        <View style={styles.workoutList}>
+          {workouts.map((workout) => (
+            <TouchableOpacity
+              key={workout.id}
+              style={styles.workoutCard}
+              onPress={() => handleWorkoutPress(workout)}
+            >
+              <View style={styles.workoutHeader}>
+                <Text style={styles.workoutName}>{workout.template?.name || 'Unknown Workout'}</Text>
+                <Text style={styles.workoutTime}>
+                  {format(new Date(workout.startTime), 'h:mm a')}
+                </Text>
+              </View>
+              <View style={styles.workoutStats}>
+                <Text style={styles.workoutStat}>
+                  {workout.exercises.length} exercises
+                </Text>
+                <Text style={styles.workoutDuration}>
+                  {workout.endTime ? formatDuration(Math.floor((new Date(workout.endTime).getTime() - new Date(workout.startTime).getTime()) / 1000)) : 'In Progress'}
+                </Text>
+              </View>
+            </TouchableOpacity>
+          ))}
+        </View>
       </View>
     );
   };
 
   return (
-    <ScrollView style={styles.content}>
-      {groupedWorkouts.today.length === 0 && 
-       groupedWorkouts.yesterday.length === 0 && 
-       groupedWorkouts.thisWeek.length === 0 && 
-       groupedWorkouts.lastWeek.length === 0 && 
-       groupedWorkouts.older.length === 0 ? (
-        <View style={styles.emptyState}>
-          <Ionicons name="barbell-outline" size={48} color="#D9D9D9" />
-          <Text style={styles.emptyStateText}>No completed workouts yet</Text>
-        </View>
-      ) : (
-        <>
-          {renderSection('Today', groupedWorkouts.today)}
-          {renderSection('Yesterday', groupedWorkouts.yesterday)}
-          {renderSection('This Week', groupedWorkouts.thisWeek)}
-          {renderSection('Last Week', groupedWorkouts.lastWeek)}
-          {renderSection('Older', groupedWorkouts.older)}
-        </>
-      )}
+    <ScrollView 
+      style={styles.container}
+      onScroll={({ nativeEvent }) => {
+        const { layoutMeasurement, contentOffset, contentSize } = nativeEvent;
+        const paddingToBottom = 20;
+        const isCloseToBottom = layoutMeasurement.height + contentOffset.y >= contentSize.height - paddingToBottom;
+        
+        if (isCloseToBottom && hasMore) {
+          onLoadMore();
+        }
+      }}
+      scrollEventThrottle={400}
+    >
+      {renderWorkoutGroup('Today', groupedWorkouts.today)}
+      {renderWorkoutGroup('Yesterday', groupedWorkouts.yesterday)}
+      {renderWorkoutGroup('Past Week', groupedWorkouts.pastWeek)}
+      {renderWorkoutGroup('Older', groupedWorkouts.older)}
     </ScrollView>
   );
 };
 
 const styles = StyleSheet.create({
-  content: {
+  container: {
     flex: 1,
+    backgroundColor: '#F5F5F0',
   },
-  section: {
+  groupContainer: {
     marginBottom: 24,
-    paddingHorizontal: 16,
   },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#7F8C8D',
-    marginBottom: 12,
-    paddingLeft: 4,
+  groupHeader: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+  },
+  groupTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#2C3E50',
+  },
+  divider: {
+    height: 1,
+    backgroundColor: '#E0E0E0',
+    marginHorizontal: 16,
+    marginBottom: 8,
+  },
+  workoutList: {
+    paddingHorizontal: 16,
   },
   workoutCard: {
     backgroundColor: '#FFFFFF',
     borderRadius: 12,
     padding: 16,
-    marginBottom: 16,
+    marginBottom: 12,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
@@ -116,53 +131,33 @@ const styles = StyleSheet.create({
   },
   workoutHeader: {
     flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 12,
+    marginBottom: 8,
   },
-  workoutIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: '#F8F9FA',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 12,
-  },
-  workoutInfo: {
-    flex: 1,
-  },
-  workoutTitle: {
+  workoutName: {
     fontSize: 16,
     fontWeight: '600',
     color: '#2C3E50',
+    flex: 1,
   },
   workoutTime: {
     fontSize: 14,
     color: '#7F8C8D',
-    marginTop: 2,
+    marginLeft: 8,
   },
-  workoutDetails: {
+  workoutStats: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-  },
-  detailText: {
-    fontSize: 14,
-    color: '#2C3E50',
-    backgroundColor: '#F8F9FA',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 4,
-  },
-  emptyState: {
+    justifyContent: 'space-between',
     alignItems: 'center',
-    justifyContent: 'center',
-    padding: 32,
   },
-  emptyStateText: {
-    fontSize: 16,
+  workoutStat: {
+    fontSize: 14,
     color: '#7F8C8D',
-    marginTop: 8,
+  },
+  workoutDuration: {
+    fontSize: 14,
+    color: '#7F8C8D',
   },
 });
 

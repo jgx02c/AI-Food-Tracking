@@ -18,6 +18,7 @@ import CreateGoalScreen from './src/screens/CreateGoalScreen';
 import GoalDetailsScreen from './src/screens/GoalDetailsScreen';
 import SettingsStack from './src/navigation/SettingsStack';
 import ManualFoodEntryScreen from './src/screens/ManualFoodEntryScreen';
+import AddWeightScreen from './src/screens/AddWeightScreen';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 const Tab = createBottomTabNavigator<MainTabParamList>();
@@ -83,13 +84,7 @@ export default function App() {
           name="WorkoutDetails" 
           component={WorkoutDetailsScreen}
           options={{
-            headerShown: true,
-            title: '',
-            headerStyle: {
-              backgroundColor: '#F5F5F0',
-            },
-            headerShadowVisible: false,
-            headerLeft: () => <BackButton />,
+            headerShown: false,
           }}
         />
         <Stack.Screen name="Camera" component={CameraScreen} />
@@ -97,13 +92,7 @@ export default function App() {
           name="CreateGoal" 
           component={CreateGoalScreen}
           options={{
-            headerShown: true,
-            title: '',
-            headerStyle: {
-              backgroundColor: '#F5F5F0',
-            },
-            headerShadowVisible: false,
-            headerLeft: () => <BackButton />,
+            headerShown: false,
           }}
         />
         <Stack.Screen 
@@ -120,6 +109,13 @@ export default function App() {
           }}
         />
         <Stack.Screen name="ManualFoodEntry" component={ManualFoodEntryScreen} />
+        <Stack.Screen 
+          name="AddWeight" 
+          component={AddWeightScreen}
+          options={{
+            headerShown: false,
+          }}
+        />
       </Stack.Navigator>
     </NavigationContainer>
   );

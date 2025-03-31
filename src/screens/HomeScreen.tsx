@@ -7,6 +7,7 @@ import { StorageService } from '../services/storage';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { WorkoutEntry, ActiveWorkout } from '../types/workout';
 import Header from '../components/home/Header';
+import WeightSection from '../components/home/WeightSection';
 
 // Navigation
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -126,7 +127,7 @@ const HomeScreen = () => {
   const handleWorkoutPress = (date: string) => {
     const workout = completedWorkouts.find(w => w.startTime.toISOString() === date);
     if (workout) {
-      navigation.navigate('WorkoutDetails', {workoutId: workout.id}); 
+      navigation.navigate('WorkoutDetails', { workoutId: workout.id }); 
     } else {
       console.log('No matching workout found');
     }
@@ -161,11 +162,6 @@ const HomeScreen = () => {
           date={new Date().toLocaleDateString()} 
         />
 
-        <WorkoutsSection 
-          workouts={todayWorkouts}
-          onWorkoutPress={handleWorkoutPress}
-        />
-
         <StatsSection 
           stats={{
             calories: todayStats.totalCalories,
@@ -179,6 +175,16 @@ const HomeScreen = () => {
             carbs: goals.carbsGoal,
             fat: goals.fatGoal,
           }}
+        />
+
+        <WeightSection 
+          currentWeight={goals.weight}
+          targetWeight={goals.targetWeight}
+        />
+
+        <WorkoutsSection 
+          workouts={todayWorkouts}
+          onWorkoutPress={handleWorkoutPress}
         />
 
         <FoodEntriesSection 

@@ -87,6 +87,13 @@ const ManualFoodEntryScreen = () => {
   return (
     <SafeAreaView style={styles.safeArea} edges={['top']}>
       <View style={styles.header}>
+        <TouchableOpacity 
+          style={styles.backButton}
+          onPress={() => navigation.goBack()}
+        >
+          <Ionicons name="chevron-back" size={24} color="#2C3E50" />
+          <Text style={styles.backButtonText}>Back</Text>
+        </TouchableOpacity>
         <Text style={styles.title}>Manual Food Entry</Text>
       </View>
 
@@ -222,6 +229,16 @@ const styles = StyleSheet.create({
     backgroundColor: '#F5F5F0',
     borderBottomWidth: 1,
     borderBottomColor: '#E0E0E0',
+  },
+  backButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  backButtonText: {
+    marginLeft: 4,
+    color: '#2C3E50',
+    fontSize: 16,
   },
   title: {
     fontSize: 24,
