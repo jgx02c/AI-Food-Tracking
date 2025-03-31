@@ -21,6 +21,7 @@ import TemplateList from '../components/workout/TemplateList';
 import WorkoutListView from '../components/workout/WorkoutListView';
 import ActiveWorkoutView from '../components/workout/ActiveWorkoutView';
 import WorkoutHeaderTabs from '../components/workout/WorkoutHeaderTabs';
+import SetManager from '../components/workout/SetManager';
 import { format, isToday, isYesterday, isThisWeek, subWeeks } from 'date-fns';
 import { useNavigation } from '@react-navigation/native';
 
@@ -143,125 +144,7 @@ const WorkoutScreen = () => {
     setActiveWorkout(newWorkout);
   };
 
-  const updateSetWeight = async (exerciseIndex: number, setIndex: number, weight: number) => {
-    if (!activeWorkout) return;
-
-    const updatedExercises = [...activeWorkout.exercises];
-    updatedExercises[exerciseIndex].sets[setIndex].actualWeight = weight;
-
-    const updatedWorkout = {
-      ...activeWorkout,
-      exercises: updatedExercises,
-    };
-    setActiveWorkout(updatedWorkout);
-    await StorageService.saveActiveWorkout(updatedWorkout);
-  };
-
-  const updateSetReps = async (exerciseIndex: number, setIndex: number, reps: number) => {
-    if (!activeWorkout) return;
-
-    const updatedExercises = [...activeWorkout.exercises];
-    updatedExercises[exerciseIndex].sets[setIndex].actualReps = reps;
-
-    const updatedWorkout = {
-      ...activeWorkout,
-      exercises: updatedExercises,
-    };
-    setActiveWorkout(updatedWorkout);
-    await StorageService.saveActiveWorkout(updatedWorkout);
-  };
-
-  const completeSet = async (exerciseIndex: number, setIndex: number) => {
-    if (!activeWorkout) return;
-
-    const updatedExercises = [...activeWorkout.exercises];
-    const set = updatedExercises[exerciseIndex].sets[setIndex];
-    
-    // Toggle completion state
-    set.completed = !set.completed;
-    
-    // If uncompleting, also clear failure state
-    if (!set.completed) {
-      set.isFailure = false;
-    }
-
-    const updatedWorkout = {
-      ...activeWorkout,
-      exercises: updatedExercises,
-    };
-    setActiveWorkout(updatedWorkout);
-    await StorageService.saveActiveWorkout(updatedWorkout);
-  };
-
-  const markSetAsFailure = async (exerciseIndex: number, setIndex: number) => {
-    if (!activeWorkout) return;
-
-    const updatedExercises = [...activeWorkout.exercises];
-    const set = updatedExercises[exerciseIndex].sets[setIndex];
-    
-    // Toggle failure state
-    set.isFailure = !set.isFailure;
-    
-    // If marking as failure, also clear completion state
-    if (set.isFailure) {
-      set.completed = false;
-    }
-
-    const updatedWorkout = {
-      ...activeWorkout,
-      exercises: updatedExercises,
-    };
-    setActiveWorkout(updatedWorkout);
-    await StorageService.saveActiveWorkout(updatedWorkout);
-  };
-
-  const deleteSet = async (exerciseIndex: number, setIndex: number) => {
-    if (!activeWorkout) return;
-
-    Alert.alert(
-      'Delete Set',
-      'Are you sure you want to delete this set?',
-      [
-        {
-          text: 'Cancel',
-          style: 'cancel',
-        },
-        {
-          text: 'Delete',
-          style: 'destructive',
-          onPress: async () => {
-            const updatedExercises = [...activeWorkout.exercises];
-            updatedExercises[exerciseIndex].sets.splice(setIndex, 1);
-
-            const updatedWorkout = {
-              ...activeWorkout,
-              exercises: updatedExercises,
-            };
-            setActiveWorkout(updatedWorkout);
-            await StorageService.saveActiveWorkout(updatedWorkout);
-          },
-        },
-      ]
-    );
-  };
-
-  const addSet = async (exerciseIndex: number) => {
-    if (!activeWorkout) return;
-
-    const updatedExercises = [...activeWorkout.exercises];
-    const lastSet = updatedExercises[exerciseIndex].sets[updatedExercises[exerciseIndex].sets.length - 1];
-    updatedExercises[exerciseIndex].sets.push({
-      ...lastSet,
-      actualWeight: undefined,
-      actualReps: undefined,
-      completed: false,
-      isFailure: false,
-    });
-
-    const updatedWorkout = {
-      ...activeWorkout,
-      exercises: updatedExercises,
-    };
+  const handleUpdateWorkout = async (updatedWorkout: ActiveWorkout) => {
     setActiveWorkout(updatedWorkout);
     await StorageService.saveActiveWorkout(updatedWorkout);
   };
@@ -352,33 +235,35 @@ const WorkoutScreen = () => {
     );
   };
 
+  // Group completed workouts by time period
   const groupedWorkouts = {
-    today: completedWorkouts.filter(workout => {
-      const workoutDate = new Date(workout.startTime);
-      return isToday(workoutDate);
-    }),
-    yesterday: completedWorkouts.filter(workout => {
-      const workoutDate = new Date(workout.startTime);
-      return isYesterday(workoutDate);
-    }),
-    pastWeek: completedWorkouts.filter(workout => {
-      const workoutDate = new Date(workout.startTime);
-      const now = new Date();
-      const lastWeekStart = subWeeks(now, 1);
-      return workoutDate >= lastWeekStart && !isToday(workoutDate) && !isYesterday(workoutDate);
-    }),
-    older: completedWorkouts.filter(workout => {
-      const workoutDate = new Date(workout.startTime);
-      const now = new Date();
-      const lastWeekStart = subWeeks(now, 1);
-      return workoutDate < lastWeekStart;
-    }),
+    today: completedWorkouts.filter(workout => isToday(new Date(workout.startTime))),
+    yesterday: completedWorkouts.filter(workout => isYesterday(new Date(workout.startTime))),
+    pastWeek: completedWorkouts.filter(workout => 
+      isThisWeek(new Date(workout.startTime)) && 
+      !isToday(new Date(workout.startTime)) && 
+      !isYesterday(new Date(workout.startTime))
+    ),
+    older: completedWorkouts.filter(workout => 
+      !isThisWeek(new Date(workout.startTime))
+    ),
   };
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['top']}>
       <StatusBar barStyle="dark-content" backgroundColor="#F5F5F0" />
       <View style={styles.container}>
+        <WorkoutHeaderTabs
+          activeTab={activeTab}
+          onTabChange={setActiveTab}
+          onAddPress={showAddOptions}
+        />
+        
+        <SetManager
+          activeWorkout={activeWorkout}
+          onUpdateWorkout={handleUpdateWorkout}
+        />
+
         {activeWorkout ? (
           showCompletionScreen ? (
             <WorkoutCompletionScreen
@@ -388,26 +273,57 @@ const WorkoutScreen = () => {
           ) : (
             <ActiveWorkoutView
               workout={activeWorkout}
+              onFinish={finishWorkout}
               isTimerPaused={isTimerPaused}
               onPause={() => setIsTimerPaused(true)}
               onResume={() => setIsTimerPaused(false)}
               onStop={handleStopTimer}
-              onUpdateSetWeight={updateSetWeight}
-              onUpdateSetReps={updateSetReps}
-              onCompleteSet={completeSet}
-              onMarkSetAsFailure={markSetAsFailure}
-              onDeleteSet={deleteSet}
-              onAddSet={addSet}
-              onFinish={finishWorkout}
+              onUpdateSetWeight={(exerciseIndex, setIndex, weight) => {
+                const updatedExercises = [...activeWorkout.exercises];
+                updatedExercises[exerciseIndex].sets[setIndex].actualWeight = weight;
+                handleUpdateWorkout({ ...activeWorkout, exercises: updatedExercises });
+              }}
+              onUpdateSetReps={(exerciseIndex, setIndex, reps) => {
+                const updatedExercises = [...activeWorkout.exercises];
+                updatedExercises[exerciseIndex].sets[setIndex].actualReps = reps;
+                handleUpdateWorkout({ ...activeWorkout, exercises: updatedExercises });
+              }}
+              onCompleteSet={(exerciseIndex, setIndex) => {
+                const updatedExercises = [...activeWorkout.exercises];
+                const set = updatedExercises[exerciseIndex].sets[setIndex];
+                set.completed = !set.completed;
+                if (!set.completed) set.isFailure = false;
+                handleUpdateWorkout({ ...activeWorkout, exercises: updatedExercises });
+              }}
+              onMarkSetAsFailure={(exerciseIndex, setIndex) => {
+                const updatedExercises = [...activeWorkout.exercises];
+                const set = updatedExercises[exerciseIndex].sets[setIndex];
+                set.isFailure = !set.isFailure;
+                if (set.isFailure) set.completed = false;
+                handleUpdateWorkout({ ...activeWorkout, exercises: updatedExercises });
+              }}
+              onDeleteSet={(exerciseIndex, setIndex) => {
+                const updatedExercises = [...activeWorkout.exercises];
+                updatedExercises[exerciseIndex].sets.splice(setIndex, 1);
+                handleUpdateWorkout({ ...activeWorkout, exercises: updatedExercises });
+              }}
+              onAddSet={(exerciseIndex) => {
+                const updatedExercises = [...activeWorkout.exercises];
+                const exercise = updatedExercises[exerciseIndex];
+                const lastSet = exercise.sets[exercise.sets.length - 1];
+                exercise.sets.push({
+                  ...lastSet,
+                  actualWeight: undefined,
+                  actualReps: undefined,
+                  completed: false,
+                  isFailure: false,
+                });
+                handleUpdateWorkout({ ...activeWorkout, exercises: updatedExercises });
+              }}
             />
           )
         ) : (
-          <>
-            <WorkoutHeaderTabs
-              activeTab={activeTab}
-              onTabChange={setActiveTab}
-              onAddPress={showAddOptions}
-            />
+          <ScrollView style={styles.content}>
             {activeTab === 'templates' ? (
               templates.length === 0 ? (
                 <View style={styles.emptyState}>
@@ -423,13 +339,13 @@ const WorkoutScreen = () => {
                 />
               )
             ) : (
-              <WorkoutListView 
+              <WorkoutListView
                 groupedWorkouts={groupedWorkouts}
                 onLoadMore={handleLoadMore}
                 hasMore={hasMore}
               />
             )}
-          </>
+          </ScrollView>
         )}
       </View>
 
@@ -479,6 +395,9 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#7F8C8D',
     marginTop: 8,
+  },
+  content: {
+    flex: 1,
   },
 });
 
