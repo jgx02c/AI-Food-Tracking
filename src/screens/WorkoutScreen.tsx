@@ -3,7 +3,6 @@ import {
   View,
   Text,
   StyleSheet,
-  TouchableOpacity,
   ScrollView,
   Platform,
   StatusBar,
@@ -22,7 +21,8 @@ import WorkoutListView from '../components/workout/WorkoutListView';
 import ActiveWorkoutView from '../components/workout/ActiveWorkoutView';
 import WorkoutHeaderTabs from '../components/workout/WorkoutHeaderTabs';
 import SetManager from '../components/workout/SetManager';
-import { format, isToday, isYesterday, isThisWeek, subWeeks } from 'date-fns';
+import WorkoutManager from '../components/workout/WorkoutManager';
+import { format, isToday, isYesterday, isThisWeek } from 'date-fns';
 import { useNavigation } from '@react-navigation/native';
 
 type TabType = 'templates' | 'workouts';
@@ -92,147 +92,9 @@ const WorkoutScreen = () => {
     }
   };
 
-  const handleEditTemplate = (template: WorkoutTemplate) => {
-    setEditingTemplate(template);
-    setShowTemplateEditor(true);
-  };
-
-  const handleDeleteTemplate = async (templateId: string) => {
-    Alert.alert(
-      'Delete Template',
-      'Are you sure you want to delete this template?',
-      [
-        {
-          text: 'Cancel',
-          style: 'cancel',
-        },
-        {
-          text: 'Delete',
-          style: 'destructive',
-          onPress: async () => {
-            await StorageService.deleteWorkoutTemplate(templateId);
-            const updatedTemplates = templates.filter(t => t.id !== templateId);
-            setTemplates(updatedTemplates);
-          },
-        },
-      ]
-    );
-  };
-
-  const startWorkout = async (template: WorkoutTemplate) => {
-    const newWorkout: ActiveWorkout = {
-      id: Date.now().toString(),
-      templateId: template.id,
-      template,
-      startTime: new Date(),
-      exercises: template.exercises.map(exercise => ({
-        exerciseId: exercise.exerciseId,
-        name: exercise.name,
-        sets: exercise.sets.map(set => ({
-          reps: set.reps,
-          weight: set.weight,
-          actualWeight: undefined,
-          actualReps: undefined,
-          completed: false,
-          isFailure: false,
-        })),
-      })),
-      status: 'inProgress',
-    };
-
-    await StorageService.saveActiveWorkout(newWorkout);
-    setActiveWorkout(newWorkout);
-  };
-
   const handleUpdateWorkout = async (updatedWorkout: ActiveWorkout) => {
     setActiveWorkout(updatedWorkout);
     await StorageService.saveActiveWorkout(updatedWorkout);
-  };
-
-  const finishWorkout = async () => {
-    if (!activeWorkout) return;
-
-    try {
-      // Create completed workout with current template data
-      const completedWorkout: ActiveWorkout = {
-        ...activeWorkout,
-        endTime: new Date(),
-        status: 'completed' as const,
-      };
-
-      // Save the completed workout
-      await StorageService.saveCompletedWorkout(completedWorkout);
-      
-      // Clear the active workout
-      await StorageService.saveActiveWorkout(null);
-      
-      // Update state
-      setActiveWorkout(completedWorkout);
-      setShowCompletionScreen(true);
-    } catch (error) {
-      console.error('Error finishing workout:', error);
-      Alert.alert(
-        'Error',
-        'Failed to save the completed workout. Please try again.',
-        [{ text: 'OK' }]
-      );
-    }
-  };
-
-  const handleWorkoutCompletion = () => {
-    setShowCompletionScreen(false);
-    setActiveWorkout(null);
-    loadCompletedWorkouts(1); // Reset to first page when completing a workout
-    setActiveTab('workouts'); // Switch to workouts tab to show the completed workout
-  };
-
-  const cancelWorkout = async () => {
-    if (!activeWorkout) return;
-
-    const cancelledWorkout: ActiveWorkout = {
-      ...activeWorkout,
-      endTime: new Date(),
-      status: 'cancelled' as const,
-    };
-    setActiveWorkout(cancelledWorkout);
-    await StorageService.saveActiveWorkout(cancelledWorkout);
-    setActiveWorkout(null);
-  };
-
-  const showAddOptions = () => {
-    ActionSheetIOS.showActionSheetWithOptions(
-      {
-        options: ['Cancel', 'Add Template'],
-        cancelButtonIndex: 0,
-      },
-      (buttonIndex: number) => {
-        if (buttonIndex === 1) {
-          setEditingTemplate(undefined);
-          setShowTemplateEditor(true);
-        }
-      }
-    );
-  };
-
-  const handleStopTimer = () => {
-    Alert.alert(
-      'Stop Workout',
-      'Are you sure you want to stop this workout? This will cancel the current session.',
-      [
-        {
-          text: 'Cancel',
-          style: 'cancel',
-        },
-        {
-          text: 'Stop',
-          style: 'destructive',
-          onPress: () => {
-            cancelWorkout();
-            setActiveTab('templates'); // Switch back to templates tab
-          },
-        },
-      ]
-    );
   };
 
   // Group completed workouts by time period
@@ -256,7 +118,22 @@ const WorkoutScreen = () => {
         <WorkoutHeaderTabs
           activeTab={activeTab}
           onTabChange={setActiveTab}
-          onAddPress={showAddOptions}
+          onAddPress={() => {
+            if (Platform.OS === 'ios') {
+              ActionSheetIOS.showActionSheetWithOptions(
+                {
+                  options: ['Cancel', 'Add Template'],
+                  cancelButtonIndex: 0,
+                },
+                (buttonIndex: number) => {
+                  if (buttonIndex === 1) {
+                    setEditingTemplate(undefined);
+                    setShowTemplateEditor(true);
+                  }
+                }
+              );
+            }
+          }}
         />
         
         <SetManager
@@ -264,20 +141,89 @@ const WorkoutScreen = () => {
           onUpdateWorkout={handleUpdateWorkout}
         />
 
+        <WorkoutManager
+          templates={templates}
+          activeWorkout={activeWorkout}
+          onTemplatesChange={setTemplates}
+          onActiveWorkoutChange={setActiveWorkout}
+          onShowTemplateEditor={(template) => {
+            setEditingTemplate(template);
+            setShowTemplateEditor(true);
+          }}
+          onShowCompletionScreen={setShowCompletionScreen}
+          onActiveTabChange={setActiveTab}
+        />
+
         {activeWorkout ? (
           showCompletionScreen ? (
             <WorkoutCompletionScreen
               workout={activeWorkout}
-              onFinish={handleWorkoutCompletion}
+              onFinish={() => {
+                setShowCompletionScreen(false);
+                setActiveWorkout(null);
+                loadCompletedWorkouts(1); // Reset to first page when completing a workout
+                setActiveTab('workouts'); // Switch to workouts tab to show the completed workout
+              }}
             />
           ) : (
             <ActiveWorkoutView
               workout={activeWorkout}
-              onFinish={finishWorkout}
+              onFinish={async () => {
+                if (!activeWorkout) return;
+
+                try {
+                  // Create completed workout with current template data
+                  const completedWorkout: ActiveWorkout = {
+                    ...activeWorkout,
+                    endTime: new Date(),
+                    status: 'completed' as const,
+                  };
+
+                  // Save the completed workout
+                  await StorageService.saveCompletedWorkout(completedWorkout);
+                  
+                  // Clear the active workout
+                  await StorageService.saveActiveWorkout(null);
+                  
+                  // Update state
+                  setActiveWorkout(completedWorkout);
+                  setShowCompletionScreen(true);
+                } catch (error) {
+                  console.error('Error finishing workout:', error);
+                }
+              }}
               isTimerPaused={isTimerPaused}
               onPause={() => setIsTimerPaused(true)}
               onResume={() => setIsTimerPaused(false)}
-              onStop={handleStopTimer}
+              onStop={() => {
+                Alert.alert(
+                  'Stop Workout',
+                  'Are you sure you want to stop this workout? This will cancel the current session.',
+                  [
+                    {
+                      text: 'Cancel',
+                      style: 'cancel',
+                    },
+                    {
+                      text: 'Stop',
+                      style: 'destructive',
+                      onPress: async () => {
+                        if (!activeWorkout) return;
+
+                        const cancelledWorkout: ActiveWorkout = {
+                          ...activeWorkout,
+                          endTime: new Date(),
+                          status: 'cancelled' as const,
+                        };
+                        setActiveWorkout(cancelledWorkout);
+                        await StorageService.saveActiveWorkout(cancelledWorkout);
+                        setActiveWorkout(null);
+                        setActiveTab('templates'); // Switch back to templates tab
+                      },
+                    },
+                  ]
+                );
+              }}
               onUpdateSetWeight={(exerciseIndex, setIndex, weight) => {
                 const updatedExercises = [...activeWorkout.exercises];
                 updatedExercises[exerciseIndex].sets[setIndex].actualWeight = weight;
@@ -333,9 +279,39 @@ const WorkoutScreen = () => {
               ) : (
                 <TemplateList
                   templates={templates}
-                  onEditTemplate={handleEditTemplate}
-                  onDeleteTemplate={handleDeleteTemplate}
-                  onStartWorkout={startWorkout}
+                  onEditTemplate={(template) => {
+                    setEditingTemplate(template);
+                    setShowTemplateEditor(true);
+                  }}
+                  onDeleteTemplate={async (templateId) => {
+                    await StorageService.deleteWorkoutTemplate(templateId);
+                    const updatedTemplates = templates.filter(t => t.id !== templateId);
+                    setTemplates(updatedTemplates);
+                  }}
+                  onStartWorkout={async (template) => {
+                    const newWorkout: ActiveWorkout = {
+                      id: Date.now().toString(),
+                      templateId: template.id,
+                      template,
+                      startTime: new Date(),
+                      exercises: template.exercises.map(exercise => ({
+                        exerciseId: exercise.exerciseId,
+                        name: exercise.name,
+                        sets: exercise.sets.map(set => ({
+                          reps: set.reps,
+                          weight: set.weight,
+                          actualWeight: undefined,
+                          actualReps: undefined,
+                          completed: false,
+                          isFailure: false,
+                        })),
+                      })),
+                      status: 'inProgress',
+                    };
+
+                    await StorageService.saveActiveWorkout(newWorkout);
+                    setActiveWorkout(newWorkout);
+                  }}
                 />
               )
             ) : (
