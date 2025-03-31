@@ -1,8 +1,10 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Alert } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Alert, Platform, Modal } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
+import { FoodEntriesService } from '../services/foodEntries';
+import DateTimePicker from '@react-native-community/datetimepicker';
 
 const ManualFoodEntryScreen = () => {
   const navigation = useNavigation();
@@ -13,16 +15,74 @@ const ManualFoodEntryScreen = () => {
   const [fat, setFat] = useState('');
   const [servingSize, setServingSize] = useState('');
   const [servingUnit, setServingUnit] = useState('g');
+  const [selectedTime, setSelectedTime] = useState(new Date());
+  const [showTimePicker, setShowTimePicker] = useState(false);
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!foodName || !calories || !servingSize) {
       Alert.alert('Error', 'Please fill in all required fields');
       return;
     }
 
-    // TODO: Save food entry to storage
-    navigation.goBack();
+    try {
+      const entry = {
+        name: foodName,
+        calories: parseInt(calories),
+        protein: parseInt(protein) || 0,
+        carbs: parseInt(carbs) || 0,
+        fat: parseInt(fat) || 0,
+        date: selectedTime.toISOString(),
+        servingSize: `${servingSize}${servingUnit}`,
+      };
+
+      await FoodEntriesService.addFoodEntry(entry);
+      Alert.alert('Success', 'Food entry saved successfully');
+      navigation.goBack();
+    } catch (error) {
+      console.error('Error saving food entry:', error);
+      Alert.alert('Error', 'Failed to save food entry');
+    }
   };
+
+  const onTimeChange = (event: any, selectedDate?: Date) => {
+    if (Platform.OS === 'android') {
+      setShowTimePicker(false);
+    }
+    if (selectedDate) {
+      setSelectedTime(selectedDate);
+    }
+  };
+
+  const TimePickerModal = () => (
+    <Modal
+      visible={showTimePicker}
+      transparent={true}
+      animationType="fade"
+      onRequestClose={() => setShowTimePicker(false)}
+    >
+      <TouchableOpacity 
+        style={styles.modalOverlay}
+        activeOpacity={1}
+        onPress={() => setShowTimePicker(false)}
+      >
+        <View style={styles.modalContent}>
+          <View style={styles.modalHeader}>
+            <Text style={styles.modalTitle}>Select Time</Text>
+            <TouchableOpacity onPress={() => setShowTimePicker(false)}>
+              <Ionicons name="close" size={24} color="#2C3E50" />
+            </TouchableOpacity>
+          </View>
+          <DateTimePicker
+            value={selectedTime}
+            mode="time"
+            is24Hour={false}
+            display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+            onChange={onTimeChange}
+          />
+        </View>
+      </TouchableOpacity>
+    </Modal>
+  );
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['top']}>
@@ -41,6 +101,18 @@ const ManualFoodEntryScreen = () => {
               placeholder="Enter food name"
               placeholderTextColor="#7F8C8D"
             />
+          </View>
+
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>Time</Text>
+            <TouchableOpacity 
+              style={styles.timeButton}
+              onPress={() => setShowTimePicker(true)}
+            >
+              <Text style={styles.timeButtonText}>
+                {selectedTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+              </Text>
+            </TouchableOpacity>
           </View>
 
           <View style={styles.inputGroup}>
@@ -133,6 +205,8 @@ const ManualFoodEntryScreen = () => {
           <Ionicons name="checkmark-circle-outline" size={24} color="#FFFFFF" />
           <Text style={styles.saveButtonText}>Save Entry</Text>
         </TouchableOpacity>
+
+        <TimePickerModal />
       </ScrollView>
     </SafeAreaView>
   );
@@ -182,6 +256,20 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 3,
+  },
+  timeButton: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 8,
+    padding: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  timeButtonText: {
+    fontSize: 16,
+    color: '#2C3E50',
   },
   macrosContainer: {
     flexDirection: 'row',
@@ -246,6 +334,35 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     marginLeft: 8,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalContent: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    padding: 20,
+    width: '80%',
+    maxWidth: 400,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 5,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#2C3E50',
   },
 });
 

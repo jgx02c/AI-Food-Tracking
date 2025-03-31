@@ -17,6 +17,7 @@ import CameraScreen from './src/screens/CameraScreen';
 import CreateGoalScreen from './src/screens/CreateGoalScreen';
 import GoalDetailsScreen from './src/screens/GoalDetailsScreen';
 import SettingsStack from './src/navigation/SettingsStack';
+import ManualFoodEntryScreen from './src/screens/ManualFoodEntryScreen';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 const Tab = createBottomTabNavigator<MainTabParamList>();
@@ -118,6 +119,7 @@ export default function App() {
             headerLeft: () => <BackButton />,
           }}
         />
+        <Stack.Screen name="ManualFoodEntry" component={ManualFoodEntryScreen} />
       </Stack.Navigator>
     </NavigationContainer>
   );

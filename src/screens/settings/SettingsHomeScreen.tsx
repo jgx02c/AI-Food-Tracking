@@ -2,17 +2,20 @@ import React from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, SafeAreaView } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { RootStackParamList } from '../../types/navigation';
+
+type SettingsScreenNavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
 const SettingsHomeScreen = () => {
-  const navigation = useNavigation();
+  const navigation = useNavigation<SettingsScreenNavigationProp>();
 
   return (
     <SafeAreaView style={styles.container}>
+      <View style={styles.header}>
+        <Text style={styles.title}>Settings</Text>
+      </View>
       <ScrollView>
-        <View style={styles.header}>
-          <Text style={styles.title}>Settings</Text>
-        </View>
-
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>App Settings</Text>
           <TouchableOpacity 

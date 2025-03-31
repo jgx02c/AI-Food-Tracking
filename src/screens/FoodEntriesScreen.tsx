@@ -5,18 +5,65 @@ import { Ionicons } from '@expo/vector-icons';
 import { FoodEntry } from '../services/storage';
 import { FoodEntriesService } from '../services/foodEntries';
 import { useNavigation } from '@react-navigation/native';
+import { format, isToday, isYesterday, isThisWeek, subWeeks, isWithinInterval } from 'date-fns';
+
+type GroupedEntries = {
+  today: FoodEntry[];
+  yesterday: FoodEntry[];
+  thisWeek: FoodEntry[];
+  lastWeek: FoodEntry[];
+  older: FoodEntry[];
+};
 
 const FoodEntriesScreen = () => {
   const navigation = useNavigation();
-  const [entries, setEntries] = useState<FoodEntry[]>([]);
+  const [groupedEntries, setGroupedEntries] = useState<GroupedEntries>({
+    today: [],
+    yesterday: [],
+    thisWeek: [],
+    lastWeek: [],
+    older: [],
+  });
   const [refreshing, setRefreshing] = useState(false);
 
   const loadEntries = async () => {
     try {
-      const today = new Date().toISOString().split('T')[0];
       const allEntries = await FoodEntriesService.getFoodEntries();
-      const todayEntries = allEntries.filter(entry => entry.date === today);
-      setEntries(todayEntries);
+      
+      // Sort entries by date (newest first)
+      const sortedEntries = allEntries.sort((a, b) => 
+        new Date(b.date).getTime() - new Date(a.date).getTime()
+      );
+
+      // Group entries by time period
+      const grouped: GroupedEntries = {
+        today: [],
+        yesterday: [],
+        thisWeek: [],
+        lastWeek: [],
+        older: [],
+      };
+
+      const now = new Date();
+      const lastWeekStart = subWeeks(now, 1);
+      const lastWeekEnd = subWeeks(now, 0);
+
+      sortedEntries.forEach(entry => {
+        const entryDate = new Date(entry.date);
+        if (isToday(entryDate)) {
+          grouped.today.push(entry);
+        } else if (isYesterday(entryDate)) {
+          grouped.yesterday.push(entry);
+        } else if (isThisWeek(entryDate)) {
+          grouped.thisWeek.push(entry);
+        } else if (isWithinInterval(entryDate, { start: lastWeekStart, end: lastWeekEnd })) {
+          grouped.lastWeek.push(entry);
+        } else {
+          grouped.older.push(entry);
+        }
+      });
+
+      setGroupedEntries(grouped);
     } catch (error) {
       console.error('Error loading food entries:', error);
     }
@@ -57,7 +104,7 @@ const FoodEntriesScreen = () => {
         <View style={styles.entryInfo}>
           <Text style={styles.entryTitle}>{entry.name}</Text>
           <Text style={styles.entryTime}>
-            {new Date(entry.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+            {format(new Date(entry.date), 'h:mm a')}
           </Text>
         </View>
       </View>
@@ -69,6 +116,17 @@ const FoodEntriesScreen = () => {
       </View>
     </View>
   );
+
+  const renderSection = (title: string, entries: FoodEntry[]) => {
+    if (entries.length === 0) return null;
+    
+    return (
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>{title}</Text>
+        {entries.map(renderEntry)}
+      </View>
+    );
+  };
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['top']}>
@@ -85,13 +143,23 @@ const FoodEntriesScreen = () => {
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
         }
       >
-        {entries.length === 0 ? (
+        {groupedEntries.today.length === 0 && 
+         groupedEntries.yesterday.length === 0 && 
+         groupedEntries.thisWeek.length === 0 && 
+         groupedEntries.lastWeek.length === 0 && 
+         groupedEntries.older.length === 0 ? (
           <View style={styles.emptyState}>
             <Ionicons name="restaurant-outline" size={48} color="#D9D9D9" />
-            <Text style={styles.emptyStateText}>No food entries today</Text>
+            <Text style={styles.emptyStateText}>No food entries yet</Text>
           </View>
         ) : (
-          entries.map(renderEntry)
+          <>
+            {renderSection('Today', groupedEntries.today)}
+            {renderSection('Yesterday', groupedEntries.yesterday)}
+            {renderSection('This Week', groupedEntries.thisWeek)}
+            {renderSection('Last Week', groupedEntries.lastWeek)}
+            {renderSection('Older', groupedEntries.older)}
+          </>
         )}
       </ScrollView>
     </SafeAreaView>
@@ -125,6 +193,16 @@ const styles = StyleSheet.create({
   },
   contentContainer: {
     padding: 16,
+  },
+  section: {
+    marginBottom: 24,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#7F8C8D',
+    marginBottom: 12,
+    paddingLeft: 4,
   },
   entryCard: {
     backgroundColor: '#FFFFFF',

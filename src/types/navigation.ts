@@ -26,6 +26,11 @@ export type RootStackParamList = {
   CreateGoal: undefined;
   GoalDetails: { goalId: string };
   SettingsStack: NavigatorScreenParams<SettingsStackParamList>;
+  PicListSettings: undefined;
+  NotificationsSettings: undefined;
+  BackupSettings: undefined;
+  AboutSettings: undefined;
+  LegalSettings: undefined;
 };
 
 export type MainTabParamList = {

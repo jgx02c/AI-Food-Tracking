@@ -69,9 +69,16 @@ const HomeScreen = () => {
 
   const fetchTodayEntries = async () => {
     try {
-      const today = new Date().toISOString().split('T')[0];
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const todayStr = today.toISOString();
+      
       const allEntries = await FoodEntriesService.getFoodEntries();
-      const todayEntries = allEntries.filter(entry => entry.date === today);
+      const todayEntries = allEntries.filter(entry => {
+        const entryDate = new Date(entry.date);
+        entryDate.setHours(0, 0, 0, 0);
+        return entryDate.toISOString() === todayStr;
+      });
       
       const stats: DayStats = {
         totalCalories: 0,
