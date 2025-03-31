@@ -49,8 +49,8 @@ const MainTabs = () => {
             iconName = focused ? 'fitness' : 'fitness-outline';
           } else if (route.name === 'FoodEntries') {
             iconName = focused ? 'restaurant' : 'restaurant-outline';
-          } else if (route.name === 'PicList') {
-            iconName = focused ? 'camera' : 'camera-outline';
+          } else if (route.name === 'Settings') {
+            iconName = focused ? 'settings' : 'settings-outline';
           }
 
           return <Ionicons name={iconName as any} size={size} color={color} />;
@@ -64,7 +64,7 @@ const MainTabs = () => {
       <Tab.Screen name="Goals" component={GoalsScreen} />
       <Tab.Screen name="Workout" component={WorkoutScreen} />
       <Tab.Screen name="FoodEntries" component={FoodEntriesScreen} />
-      <Tab.Screen name="PicList" component={SettingsStack} />
+      <Tab.Screen name="Settings" component={SettingsStack} />
     </Tab.Navigator>
   );
 };

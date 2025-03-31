@@ -5,7 +5,7 @@ export type RootTabParamList = {
   Goals: undefined;
   Workout: undefined;
   FoodEntries: undefined;
-  PicList: undefined;
+  Settings: undefined;
 };
 
 export type SettingsStackParamList = {
@@ -33,7 +33,7 @@ export type MainTabParamList = {
   Goals: undefined;
   Workout: undefined;
   FoodEntries: undefined;
-  PicList: undefined;
+  Settings: undefined;
 };
 
 declare global {
