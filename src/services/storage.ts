@@ -345,13 +345,23 @@ export const StorageService = {
       const completedWorkouts = await this.getCompletedWorkouts();
       return completedWorkouts
         .filter(workout => workout.template) // Filter out any workouts without template data
-        .map(workout => ({
-          date: workout.startTime.toISOString(),
-          name: workout.template.name,
-          duration: Math.round((new Date(workout.endTime || new Date()).getTime() - new Date(workout.startTime).getTime()) / 60000),
-          calories: workout.template.calories || 0,
-          type: 'workout' as const
-        }));
+        .map(workout => {
+          // Calculate total weight lifted
+          const totalWeight = workout.exercises.reduce((total, exercise) => {
+            return total + exercise.sets.reduce((setTotal, set) => {
+              return setTotal + (set.actualWeight || 0) * (set.actualReps || 0);
+            }, 0);
+          }, 0);
+
+          return {
+            date: workout.startTime.toISOString(),
+            name: workout.template.name,
+            duration: Math.round((new Date(workout.endTime || new Date()).getTime() - new Date(workout.startTime).getTime()) / 60000),
+            calories: workout.template.calories || 0,
+            type: 'workout' as const,
+            totalWeight: Math.round(totalWeight)
+          };
+        });
     } catch (error) {
       console.error('Error getting workout history:', error);
       return [];

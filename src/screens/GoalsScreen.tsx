@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, RefreshControl } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, RefreshControl, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
@@ -52,11 +52,27 @@ const GoalsScreen = () => {
             />
             <Text style={styles.goalTitle}>{goal.title}</Text>
           </View>
-          <View style={[
-            styles.categoryBadge,
-            { backgroundColor: goal.category === 'maintenance' ? '#3498DB' : '#2ECC71' }
-          ]}>
-            <Text style={styles.categoryText}>{goal.category}</Text>
+          <View style={styles.goalStatusContainer}>
+            <View style={[
+              styles.categoryBadge,
+              { backgroundColor: goal.category === 'maintenance' ? '#3498DB' : '#2ECC71' }
+            ]}>
+              <Text style={styles.categoryText}>{goal.category}</Text>
+            </View>
+            <TouchableOpacity 
+              style={[
+                styles.activeBadge,
+                { backgroundColor: goal.isActive ? '#2ECC71' : '#BDC3C7' }
+              ]}
+              onPress={(e) => {
+                e.stopPropagation();
+                handleToggleActive(goal);
+              }}
+            >
+              <Text style={styles.activeText}>
+                {goal.isActive ? 'Active' : 'Inactive'}
+              </Text>
+            </TouchableOpacity>
           </View>
         </View>
 
@@ -95,6 +111,17 @@ const GoalsScreen = () => {
         )}
       </TouchableOpacity>
     );
+  };
+
+  const handleToggleActive = async (goal: Goal) => {
+    try {
+      const updatedGoal = { ...goal, isActive: !goal.isActive };
+      await GoalsService.saveGoal(updatedGoal);
+      await loadGoals();
+    } catch (error) {
+      console.error('Error toggling goal active status:', error);
+      Alert.alert('Error', 'Failed to update goal status');
+    }
   };
 
   return (
@@ -280,6 +307,21 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 16,
     fontWeight: '600',
+  },
+  goalStatusContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  activeBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 4,
+  },
+  activeText: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: '500',
   },
 });
 

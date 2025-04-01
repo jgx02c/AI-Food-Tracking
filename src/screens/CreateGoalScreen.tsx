@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Alert 
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
-import { GoalsService, Goal } from '../services/goals';
+import GoalsService, { Goal } from '../services/goals';
 
 const CreateGoalScreen = () => {
   const navigation = useNavigation();
@@ -14,6 +14,7 @@ const CreateGoalScreen = () => {
   const [frequency, setFrequency] = useState<'daily' | 'weekly' | 'monthly'>('daily');
   const [category, setCategory] = useState<'maintenance' | 'improvement'>('maintenance');
   const [duration, setDuration] = useState('30'); // Default 30 days
+  const [isActive, setIsActive] = useState(true);
 
   const handleCreate = async () => {
     if (!title || !target || !unit) {
@@ -33,6 +34,7 @@ const CreateGoalScreen = () => {
         unit,
         frequency,
         category,
+        isActive,
       };
 
       await GoalsService.saveGoal(goal);
@@ -170,6 +172,18 @@ const CreateGoalScreen = () => {
               placeholderTextColor="#7F8C8D"
               keyboardType="numeric"
             />
+          </View>
+
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>Active Goal</Text>
+            <TouchableOpacity 
+              style={[styles.toggleButton, isActive && styles.toggleButtonActive]}
+              onPress={() => setIsActive(!isActive)}
+            >
+              <Text style={[styles.toggleButtonText, isActive && styles.toggleButtonTextActive]}>
+                {isActive ? 'Active' : 'Inactive'}
+              </Text>
+            </TouchableOpacity>
           </View>
         </View>
 
@@ -340,6 +354,28 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     marginLeft: 8,
+  },
+  toggleButton: {
+    backgroundColor: '#FFFFFF',
+    padding: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  toggleButtonActive: {
+    backgroundColor: '#2ECC71',
+  },
+  toggleButtonText: {
+    fontSize: 16,
+    color: '#2C3E50',
+    fontWeight: '500',
+  },
+  toggleButtonTextActive: {
+    color: '#FFFFFF',
   },
 });
 

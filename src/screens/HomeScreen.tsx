@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, StyleSheet, ScrollView, RefreshControl, Alert, Platform, StatusBar } from 'react-native';
+import { View, StyleSheet, ScrollView, RefreshControl, Alert, Platform, StatusBar, Text, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { DayStats, FoodEntry } from '../types';
 import { FoodEntriesService } from '../services/foodEntries';
@@ -8,17 +8,20 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { WorkoutEntry, ActiveWorkout } from '../types/workout';
 import Header from '../components/home/Header';
 import WeightSection from '../components/home/WeightSection';
+import GoalsService, { Goal } from '../services/goals';
+import { Ionicons } from '@expo/vector-icons';
 
 // Navigation
-import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { CompositeNavigationProp } from '@react-navigation/native';
-import { BottomTabParamList } from '../navigation/BottomTabNavigator';
-import { RootStackParamList } from '../types/navigation';
 import { useNavigation } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
+import type { CompositeNavigationProp } from '@react-navigation/native';
+import type { RootStackParamList } from '../types/navigation';
+import type { MainTabParamList } from '../types/navigation';
 
 type HomeScreenNavigationProp = CompositeNavigationProp<
   NativeStackNavigationProp<RootStackParamList>,
-  NativeStackNavigationProp<BottomTabParamList>
+  BottomTabNavigationProp<MainTabParamList>
 >;
 
 // Components
@@ -56,6 +59,7 @@ const HomeScreen = () => {
   });
   const [todayWorkouts, setTodayWorkouts] = useState<WorkoutEntry[]>([]);
   const [completedWorkouts, setCompletedWorkouts] = useState<ActiveWorkout[]>([]);
+  const [activeGoals, setActiveGoals] = useState<Goal[]>([]);
 
   const loadGoals = async () => {
     try {
@@ -65,6 +69,15 @@ const HomeScreen = () => {
       }
     } catch (error) {
       console.error('Error loading goals:', error);
+    }
+  };
+
+  const loadActiveGoals = async () => {
+    try {
+      const goals = await GoalsService.getActiveGoals();
+      setActiveGoals(goals);
+    } catch (error) {
+      console.error('Error loading active goals:', error);
     }
   };
 
@@ -105,16 +118,24 @@ const HomeScreen = () => {
 
   const fetchTodayWorkouts = async () => {
     try {
-      const today = new Date().toISOString().split('T')[0];
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const todayStr = today.toISOString().split('T')[0];
+      
       const [allWorkouts, allCompletedWorkouts] = await Promise.all([
         StorageService.getWorkoutHistory(),
         StorageService.getCompletedWorkouts()
       ]);
       
       const todayWorkouts = allWorkouts.filter(workout => {
-        const workoutDate = new Date(workout.date).toISOString().split('T')[0];
-        return workoutDate === today;
+        const workoutDate = new Date(workout.date);
+        workoutDate.setHours(0, 0, 0, 0);
+        return workoutDate.toISOString().split('T')[0] === todayStr;
       });
+      
+      console.log('Today:', todayStr);
+      console.log('All workouts:', allWorkouts);
+      console.log('Today\'s workouts:', todayWorkouts);
       
       setTodayWorkouts(todayWorkouts);
       setCompletedWorkouts(allCompletedWorkouts);
@@ -137,12 +158,13 @@ const HomeScreen = () => {
 
   const onRefresh = async () => {
     setRefreshing(true);
-    await Promise.all([fetchTodayEntries(), loadGoals(), fetchTodayWorkouts()]);
+    await Promise.all([fetchTodayEntries(), loadGoals(), loadActiveGoals(), fetchTodayWorkouts()]);
     setRefreshing(false);
   };
 
   useEffect(() => {
     loadGoals();
+    loadActiveGoals();
     fetchTodayEntries();
     fetchTodayWorkouts();
   }, []);
@@ -162,40 +184,94 @@ const HomeScreen = () => {
           date={new Date().toLocaleDateString()} 
         />
 
-        <StatsSection 
-          stats={{
-            calories: todayStats.totalCalories,
-            protein: todayStats.totalProtein,
-            carbs: todayStats.totalCarbs,
-            fat: todayStats.totalFat,
-          }}
-          goals={{
-            calories: goals.calorieGoal,
-            protein: goals.proteinGoal,
-            carbs: goals.carbsGoal,
-            fat: goals.fatGoal,
-          }}
-        />
+        {activeGoals.length > 0 && (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Active Goals</Text>
+            {activeGoals.map(goal => {
+              const progress = (goal.current / goal.target) * 100;
+              return (
+                <TouchableOpacity 
+                  key={goal.id} 
+                  style={styles.goalCard}
+                  onPress={() => navigation.navigate('GoalDetails', { goalId: goal.id })}
+                >
+                  <View style={styles.goalHeader}>
+                    <View style={styles.goalTitleContainer}>
+                      <Ionicons 
+                        name={
+                          goal.type === 'food' ? 'restaurant-outline' :
+                          goal.type === 'workout' ? 'fitness-outline' :
+                          'scale-outline'
+                        } 
+                        size={20} 
+                        color="#2C3E50" 
+                      />
+                      <Text style={styles.goalTitle}>{goal.title}</Text>
+                    </View>
+                    <Text style={styles.goalProgress}>
+                      {Math.round(progress)}%
+                    </Text>
+                  </View>
+                  <View style={styles.progressBar}>
+                    <View 
+                      style={[
+                        styles.progressFill,
+                        { width: `${Math.min(progress, 100)}%` }
+                      ]} 
+                    />
+                  </View>
+                  <Text style={styles.goalDetails}>
+                    {goal.current} / {goal.target} {goal.unit}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        )}
 
-        <WeightSection 
-          currentWeight={goals.weight}
-          targetWeight={goals.targetWeight}
-        />
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Weight Progress</Text>
+          <WeightSection 
+            currentWeight={goals.weight}
+            targetWeight={goals.targetWeight}
+            onPress={() => navigation.navigate('Settings')}
+          />
+        </View>
 
-        <WorkoutsSection 
-          workouts={todayWorkouts}
-          onWorkoutPress={handleWorkoutPress}
-        />
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Today's Workouts</Text>
+          <WorkoutsSection 
+            todayWorkouts={todayWorkouts}
+            completedWorkouts={completedWorkouts}
+            onPress={() => navigation.navigate('Workout')}
+          />
+        </View>
 
-        <FoodEntriesSection 
-          entries={todayStats.entries}
-          onPress={() => {
-            const parent = navigation.getParent();
-            if (parent) {
-              parent.navigate('FoodEntries');
-            }
-          }}
-        />
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Today's Stats</Text>
+          <StatsSection 
+            stats={{
+              calories: todayStats.totalCalories,
+              protein: todayStats.totalProtein,
+              carbs: todayStats.totalCarbs,
+              fat: todayStats.totalFat,
+            }}
+            goals={{
+              calories: goals.calorieGoal,
+              protein: goals.proteinGoal,
+              carbs: goals.carbsGoal,
+              fat: goals.fatGoal,
+            }}
+          />
+        </View>
+
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Today's Food</Text>
+          <FoodEntriesSection 
+            entries={todayStats.entries}
+            onPress={() => navigation.navigate('FoodEntries')}
+          />
+        </View>
       </ScrollView>
     </SafeAreaView>
   );
@@ -211,6 +287,63 @@ const styles = StyleSheet.create({
   },
   contentContainer: {
     padding: 16,
+  },
+  section: {
+    marginBottom: 24,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#2C3E50',
+    marginBottom: 12,
+  },
+  goalCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  goalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  goalTitleContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  goalTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#2C3E50',
+    marginLeft: 8,
+  },
+  goalProgress: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#2C3E50',
+  },
+  progressBar: {
+    height: 6,
+    backgroundColor: '#F8F9FA',
+    borderRadius: 3,
+    overflow: 'hidden',
+    marginBottom: 4,
+  },
+  progressFill: {
+    height: '100%',
+    backgroundColor: '#1E4D6B',
+    borderRadius: 3,
+  },
+  goalDetails: {
+    fontSize: 12,
+    color: '#7F8C8D',
   },
 });
 

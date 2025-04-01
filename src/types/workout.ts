@@ -114,4 +114,5 @@ export interface WorkoutEntry {
   duration: number;
   calories: number;
   type: 'workout';
+  totalWeight: number;
 } 
