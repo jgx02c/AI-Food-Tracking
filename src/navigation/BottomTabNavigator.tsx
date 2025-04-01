@@ -2,7 +2,7 @@ import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
 import HomeStack from './HomeStack';
-import WorkoutScreen from '../screens/WorkoutScreen';
+import WorkoutStack, { WorkoutStackParamList } from './WorkoutStack';
 import HistoryScreen from '../screens/HistoryScreen';
 import SettingsScreen from '../screens/SettingsScreen';
 import { HomeStackParamList } from './HomeStack';
@@ -11,8 +11,8 @@ import type { NavigatorScreenParams } from '@react-navigation/native';
 const Tab = createBottomTabNavigator();
 
 export type BottomTabParamList = {
-  Home: NavigatorScreenParams<HomeStackParamList>; // Make sure Home is correctly typed
-  Workout: undefined;
+  Home: NavigatorScreenParams<HomeStackParamList>;
+  Workout: NavigatorScreenParams<WorkoutStackParamList>;
   History: undefined;
   Settings: undefined;
 };
@@ -48,7 +48,7 @@ const BottomTabNavigator = () => {
       />
       <Tab.Screen
         name="Workout"
-        component={WorkoutScreen}
+        component={WorkoutStack}
         options={{
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="barbell-outline" size={size} color={color} />

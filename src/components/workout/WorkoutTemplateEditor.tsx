@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, TextInput, ScrollView, Platform } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, TextInput, ScrollView } from 'react-native';
 import { WorkoutTemplate, Exercise, WorkoutExercise } from '../../types/workout';
-import ExerciseSelector from './ExerciseSelector';
 import ExerciseSelectionModal from './ExerciseSelectionModal';
+import ExerciseSelector from './ExerciseSelector';
+import { exercises } from '../../data/exercises';
 
 interface WorkoutTemplateEditorProps {
   template?: WorkoutTemplate;
@@ -21,18 +22,23 @@ const WorkoutTemplateEditor: React.FC<WorkoutTemplateEditorProps> = ({
   );
   const [showExerciseModal, setShowExerciseModal] = useState(false);
 
-  const handleAddExercise = (exercise: Exercise) => {
+  const handleExerciseSelect = (exercise: Exercise) => {
+    // Check if exercise is already in the template
+    if (selectedExercises.some(ex => ex.exerciseId === exercise.id)) {
+      alert('This exercise is already in the template');
+      return;
+    }
+
     const newExercise: WorkoutExercise = {
       exerciseId: exercise.id,
       name: exercise.name,
       sets: [{
         reps: 10,
         weight: 0,
-        restTime: 90,
+        restTime: 60,
       }],
     };
     setSelectedExercises([...selectedExercises, newExercise]);
-    setShowExerciseModal(false);
   };
 
   const handleRemoveExercise = (index: number) => {
@@ -41,8 +47,9 @@ const WorkoutTemplateEditor: React.FC<WorkoutTemplateEditorProps> = ({
 
   const handleUpdateExerciseSet = (exerciseIndex: number, setIndex: number, field: 'reps' | 'weight' | 'restTime', value: number) => {
     const updatedExercises = [...selectedExercises];
-    updatedExercises[exerciseIndex].sets[setIndex] = {
-      ...updatedExercises[exerciseIndex].sets[setIndex],
+    const exercise = updatedExercises[exerciseIndex];
+    exercise.sets[setIndex] = {
+      ...exercise.sets[setIndex],
       [field]: value,
     };
     setSelectedExercises(updatedExercises);
@@ -50,18 +57,19 @@ const WorkoutTemplateEditor: React.FC<WorkoutTemplateEditorProps> = ({
 
   const handleAddSet = (exerciseIndex: number) => {
     const updatedExercises = [...selectedExercises];
-    const lastSet = updatedExercises[exerciseIndex].sets[updatedExercises[exerciseIndex].sets.length - 1];
-    updatedExercises[exerciseIndex].sets.push({
-      reps: lastSet.reps,
-      weight: lastSet.weight,
-      restTime: lastSet.restTime,
+    const exercise = updatedExercises[exerciseIndex];
+    exercise.sets.push({
+      reps: 10,
+      weight: 0,
+      restTime: 60,
     });
     setSelectedExercises(updatedExercises);
   };
 
   const handleRemoveSet = (exerciseIndex: number, setIndex: number) => {
     const updatedExercises = [...selectedExercises];
-    updatedExercises[exerciseIndex].sets.splice(setIndex, 1);
+    const exercise = updatedExercises[exerciseIndex];
+    exercise.sets.splice(setIndex, 1);
     setSelectedExercises(updatedExercises);
   };
 
@@ -71,67 +79,62 @@ const WorkoutTemplateEditor: React.FC<WorkoutTemplateEditorProps> = ({
       return;
     }
 
-    const newTemplate: WorkoutTemplate = {
+    if (selectedExercises.length === 0) {
+      alert('Please add at least one exercise');
+      return;
+    }
+
+    onSave({
+      ...template,
       id: template?.id || Date.now().toString(),
       name: name.trim(),
       exercises: selectedExercises,
-      calories: 0, // Default value since we're not using it
-    };
-
-    onSave(newTemplate);
+      calories: 0, // This will be calculated based on exercises
+    });
   };
 
   return (
     <View style={styles.container}>
-      <ScrollView style={styles.scrollView}>
-        <View style={styles.header}>
-          <Text style={styles.title}>
-            {template ? 'Edit Template' : 'Create Template'}
-          </Text>
-        </View>
-
-        <View style={styles.form}>
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>Template Name</Text>
-            <TextInput
-              style={styles.input}
-              value={name}
-              onChangeText={setName}
-              placeholder="Enter template name"
-            />
-          </View>
-
-          <ExerciseSelector
-            selectedExercises={selectedExercises}
-            onAddExercise={handleAddExercise}
-            onRemoveExercise={handleRemoveExercise}
-            onUpdateExerciseSet={handleUpdateExerciseSet}
-            onAddSet={handleAddSet}
-            onRemoveSet={handleRemoveSet}
-            onAddExercisePress={() => setShowExerciseModal(true)}
-          />
-        </View>
-      </ScrollView>
-
-      <View style={styles.footer}>
-        <TouchableOpacity
-          style={[styles.button, styles.cancelButton]}
-          onPress={onCancel}
-        >
-          <Text style={styles.cancelButtonText}>Cancel</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.button, styles.saveButton]}
-          onPress={handleSave}
-        >
-          <Text style={styles.saveButtonText}>Save Template</Text>
+      <View style={styles.header}>
+        <Text style={styles.title}>Edit Workout Template</Text>
+        <TouchableOpacity onPress={onCancel}>
+          <Text style={styles.cancelButton}>Cancel</Text>
         </TouchableOpacity>
       </View>
+
+      <ScrollView style={styles.content}>
+        <View style={styles.formGroup}>
+          <Text style={styles.label}>Template Name</Text>
+          <TextInput
+            style={styles.input}
+            value={name}
+            onChangeText={setName}
+            placeholder="Enter template name"
+          />
+        </View>
+
+        <ExerciseSelector
+          selectedExercises={selectedExercises}
+          onAddExercise={() => setShowExerciseModal(true)}
+          onRemoveExercise={handleRemoveExercise}
+          onUpdateExerciseSet={handleUpdateExerciseSet}
+          onAddSet={handleAddSet}
+          onRemoveSet={handleRemoveSet}
+          onAddExercisePress={() => setShowExerciseModal(true)}
+        />
+      </ScrollView>
+
+      <TouchableOpacity
+        style={styles.saveButton}
+        onPress={handleSave}
+      >
+        <Text style={styles.saveButtonText}>Save Template</Text>
+      </TouchableOpacity>
 
       <ExerciseSelectionModal
         visible={showExerciseModal}
         onClose={() => setShowExerciseModal(false)}
-        onSelect={handleAddExercise}
+        onSelect={handleExerciseSelect}
         selectedExerciseIds={selectedExercises.map(ex => ex.exerciseId)}
       />
     </View>
@@ -141,77 +144,57 @@ const WorkoutTemplateEditor: React.FC<WorkoutTemplateEditorProps> = ({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F5F7FA',
-  },
-  scrollView: {
-    flex: 1,
+    backgroundColor: '#FFFFFF',
   },
   header: {
-    padding: 20,
-    backgroundColor: '#fff',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#E5E9F2',
+    borderBottomColor: '#E0E0E0',
   },
   title: {
-    fontSize: 24,
+    fontSize: 20,
     fontWeight: '600',
-    color: '#2C3D4F',
-    fontFamily: Platform.OS === 'ios' ? 'System' : 'sans-serif',
+    color: '#2C3E50',
   },
-  form: {
-    padding: 20,
+  cancelButton: {
+    fontSize: 16,
+    color: '#1E4D6B',
   },
-  inputGroup: {
-    marginBottom: 20,
+  content: {
+    flex: 1,
+    padding: 16,
+  },
+  formGroup: {
+    marginBottom: 24,
   },
   label: {
     fontSize: 16,
-    fontWeight: '500',
-    color: '#2C3D4F',
+    fontWeight: '600',
+    color: '#2C3E50',
     marginBottom: 8,
-    fontFamily: Platform.OS === 'ios' ? 'System' : 'sans-serif',
   },
   input: {
-    backgroundColor: '#fff',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 8,
     padding: 12,
-    borderRadius: 8,
     fontSize: 16,
-    color: '#2C3D4F',
-    fontFamily: Platform.OS === 'ios' ? 'System' : 'sans-serif',
     borderWidth: 1,
-    borderColor: '#E5E9F2',
-  },
-  footer: {
-    flexDirection: 'row',
-    padding: 20,
-    backgroundColor: '#fff',
-    borderTopWidth: 1,
-    borderTopColor: '#E5E9F2',
-  },
-  button: {
-    flex: 1,
-    padding: 16,
-    borderRadius: 8,
-    alignItems: 'center',
-    marginHorizontal: 8,
-  },
-  cancelButton: {
-    backgroundColor: '#F5F7FA',
+    borderColor: '#E0E0E0',
   },
   saveButton: {
-    backgroundColor: '#739E82',
-  },
-  cancelButtonText: {
-    color: '#2C3D4F',
-    fontSize: 16,
-    fontWeight: '600',
-    fontFamily: Platform.OS === 'ios' ? 'System' : 'sans-serif',
+    margin: 16,
+    padding: 16,
+    backgroundColor: '#1E4D6B',
+    borderRadius: 8,
+    alignItems: 'center',
   },
   saveButtonText: {
-    color: '#fff',
+    color: '#FFFFFF',
     fontSize: 16,
     fontWeight: '600',
-    fontFamily: Platform.OS === 'ios' ? 'System' : 'sans-serif',
   },
 });
 

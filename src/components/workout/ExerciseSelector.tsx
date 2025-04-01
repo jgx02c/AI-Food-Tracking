@@ -25,12 +25,12 @@ const ExerciseSelector: React.FC<ExerciseSelectorProps> = ({
     <View style={styles.container}>
       <Text style={styles.sectionTitle}>Exercises</Text>
       {selectedExercises.map((exercise, exerciseIndex) => (
-        <View key={exerciseIndex} style={styles.exerciseCard}>
+        <View key={exercise.exerciseId} style={styles.exerciseCard}>
           <View style={styles.exerciseHeader}>
             <Text style={styles.exerciseName}>{exercise.name}</Text>
             <TouchableOpacity
               style={styles.removeButton}
-              onPress={() => onRemoveExercise(exerciseIndex)}
+              onPress={() => onRemoveExercise(selectedExercises.findIndex(e => e.exerciseId === exercise.exerciseId))}
             >
               <Text style={styles.removeButtonText}>Remove</Text>
             </TouchableOpacity>
@@ -42,6 +42,7 @@ const ExerciseSelector: React.FC<ExerciseSelectorProps> = ({
               <Text style={styles.setHeaderText}>Reps</Text>
               <Text style={styles.setHeaderText}>Weight</Text>
               <Text style={styles.setHeaderText}>Rest</Text>
+              <View style={styles.deleteColumn} />
             </View>
             {exercise.sets.map((set, setIndex) => (
               <View key={setIndex} style={styles.setRow}>
@@ -64,6 +65,12 @@ const ExerciseSelector: React.FC<ExerciseSelectorProps> = ({
                   onChangeText={(value) => onUpdateExerciseSet(exerciseIndex, setIndex, 'restTime', parseInt(value) || 0)}
                   keyboardType="numeric"
                 />
+                <TouchableOpacity
+                  style={styles.deleteSetButton}
+                  onPress={() => onRemoveSet(exerciseIndex, setIndex)}
+                >
+                  <Text style={styles.deleteSetButtonText}>×</Text>
+                </TouchableOpacity>
               </View>
             ))}
             <TouchableOpacity
@@ -133,43 +140,59 @@ const styles = StyleSheet.create({
   },
   setsHeader: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
+    justifyContent: 'flex-start',
     marginBottom: 8,
-    paddingHorizontal: 8,
+    paddingHorizontal: 16,
   },
   setHeaderText: {
     fontSize: 14,
     fontWeight: '500',
     color: '#829AAF',
-    flex: 1,
+    width: 55,
     textAlign: 'center',
     fontFamily: Platform.OS === 'ios' ? 'System' : 'sans-serif',
-    width: 30,
+    marginRight: 8,
+  },
+  deleteColumn: {
+    width: 55,
+    marginLeft: 8,
   },
   setRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
+    justifyContent: 'flex-start',
     alignItems: 'center',
     marginBottom: 8,
-    paddingHorizontal: 8,
+    paddingHorizontal: 16,
   },
   setNumber: {
     fontSize: 14,
     color: '#2C3D4F',
-    width: 30,
+    width: 55,
     textAlign: 'center',
     fontFamily: Platform.OS === 'ios' ? 'System' : 'sans-serif',
+    marginRight: 8,
   },
   setInput: {
     backgroundColor: '#F5F7FA',
-    padding: 8,
-    borderRadius: 8,
+    padding: 4,
+    borderRadius: 6,
     fontSize: 14,
     color: '#2C3D4F',
-    flex: 1,
-    marginHorizontal: 4,
+    width: 55,
     textAlign: 'center',
     fontFamily: Platform.OS === 'ios' ? 'System' : 'sans-serif',
+    marginRight: 8,
+  },
+  deleteSetButton: {
+    width: 55,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginLeft: 8,
+  },
+  deleteSetButtonText: {
+    color: '#E74C3C',
+    fontSize: 20,
+    fontWeight: '500',
   },
   addSetButton: {
     backgroundColor: '#F5F7FA',

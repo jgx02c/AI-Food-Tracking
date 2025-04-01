@@ -51,9 +51,9 @@ const styles = StyleSheet.create({
     padding: 0,
   },
   emptyText: {
-    textAlign: 'center',
-    color: '#7F8C8D',
     fontSize: 14,
+    color: '#7F8C8D',
+    textAlign: 'left',
   },
   entryCard: {
     backgroundColor: '#FFFFFF',

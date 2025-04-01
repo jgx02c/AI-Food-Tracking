@@ -1,14 +1,21 @@
-import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, RefreshControl, Alert } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, StyleSheet, TouchableOpacity, Text, ScrollView, RefreshControl } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import GoalsService, { Goal } from '../services/goals';
+import GoalList from '../components/goals/GoalList';
+import GoalForm from '../components/goals/GoalForm';
+import GoalDetails from '../components/goals/GoalDetails';
+import { GoalFormData } from '../types/goals';
 
 const GoalsScreen = () => {
   const navigation = useNavigation();
   const [goals, setGoals] = useState<Goal[]>([]);
   const [refreshing, setRefreshing] = useState(false);
+  const [showForm, setShowForm] = useState(false);
+  const [selectedGoal, setSelectedGoal] = useState<Goal | null>(null);
+  const [isEditing, setIsEditing] = useState(false);
 
   const loadGoals = async () => {
     try {
@@ -29,15 +36,84 @@ const GoalsScreen = () => {
     loadGoals();
   }, []);
 
+  const handleAddGoal = () => {
+    setIsEditing(false);
+    setSelectedGoal(null);
+    setShowForm(true);
+  };
+
+  const handleEditGoal = (goal: Goal) => {
+    setIsEditing(true);
+    setSelectedGoal(goal);
+    setShowForm(true);
+  };
+
+  const handleDeleteGoal = async (goalId: string) => {
+    try {
+      await GoalsService.deleteGoal(goalId);
+      await loadGoals();
+    } catch (error) {
+      console.error('Error deleting goal:', error);
+    }
+  };
+
+  const handleUpdateGoal = async (goalId: string, data: Partial<GoalFormData>) => {
+    try {
+      const goal = goals.find(g => g.id === goalId);
+      if (!goal) return;
+
+      const { target, ...restData } = data;
+      const updatedGoal: Goal = {
+        ...goal,
+        ...restData,
+        target: target ? Number(target) : goal.target,
+        isActive: goal.isActive,
+      };
+      await GoalsService.saveGoal(updatedGoal);
+      await loadGoals();
+    } catch (error) {
+      console.error('Error updating goal:', error);
+    }
+  };
+
+  const handleSubmitForm = async (formData: GoalFormData) => {
+    try {
+      if (isEditing && selectedGoal) {
+        await handleUpdateGoal(selectedGoal.id, formData);
+      } else {
+        const { target, ...restData } = formData;
+        const newGoal: Goal = {
+          id: Date.now().toString(),
+          current: 0,
+          isActive: true,
+          target: Number(target),
+          ...restData,
+        };
+        await GoalsService.saveGoal(newGoal);
+        await loadGoals();
+      }
+      setShowForm(false);
+    } catch (error) {
+      console.error('Error saving goal:', error);
+    }
+  };
+
+  const handleGoalPress = (goalId: string) => {
+    const goal = goals.find(g => g.id === goalId);
+    if (goal) {
+      setSelectedGoal(goal);
+    }
+  };
+
   const renderGoalCard = (goal: Goal) => {
     const progress = (goal.current / goal.target) * 100;
     const isCompleted = progress >= 100;
 
     return (
-      <TouchableOpacity 
+      <TouchableOpacity
         key={goal.id}
         style={styles.goalCard}
-        onPress={() => navigation.navigate('GoalDetails', { goalId: goal.id })}
+        onPress={() => handleGoalPress(goal.id)}
       >
         <View style={styles.goalHeader}>
           <View style={styles.goalTitleContainer}>
@@ -59,20 +135,14 @@ const GoalsScreen = () => {
             ]}>
               <Text style={styles.categoryText}>{goal.category}</Text>
             </View>
-            <TouchableOpacity 
-              style={[
-                styles.activeBadge,
-                { backgroundColor: goal.isActive ? '#2ECC71' : '#BDC3C7' }
-              ]}
-              onPress={(e) => {
-                e.stopPropagation();
-                handleToggleActive(goal);
-              }}
-            >
-              <Text style={styles.activeText}>
+            <View style={[
+              styles.statusBadge,
+              { backgroundColor: goal.isActive ? '#2ECC71' : '#BDC3C7' }
+            ]}>
+              <Text style={styles.statusText}>
                 {goal.isActive ? 'Active' : 'Inactive'}
               </Text>
-            </TouchableOpacity>
+            </View>
           </View>
         </View>
 
@@ -113,16 +183,64 @@ const GoalsScreen = () => {
     );
   };
 
-  const handleToggleActive = async (goal: Goal) => {
-    try {
-      const updatedGoal = { ...goal, isActive: !goal.isActive };
-      await GoalsService.saveGoal(updatedGoal);
-      await loadGoals();
-    } catch (error) {
-      console.error('Error toggling goal active status:', error);
-      Alert.alert('Error', 'Failed to update goal status');
-    }
-  };
+  if (showForm) {
+    return (
+      <SafeAreaView style={styles.safeArea} edges={['top']}>
+        <View style={styles.header}>
+          <TouchableOpacity 
+            onPress={() => setShowForm(false)}
+            style={styles.backButton}
+          >
+            <Ionicons name="arrow-back" size={24} color="#2C3E50" />
+          </TouchableOpacity>
+          <TouchableOpacity 
+            onPress={() => setIsEditing(!isEditing)}
+            style={styles.editButton}
+          >
+            <Ionicons 
+              name={isEditing ? "checkmark" : "pencil"} 
+              size={24} 
+              color="#2C3E50" 
+            />
+          </TouchableOpacity>
+        </View>
+        <GoalForm
+          onSubmit={handleSubmitForm}
+          initialData={selectedGoal ? {
+            ...selectedGoal,
+            target: selectedGoal.target.toString(),
+          } : undefined}
+          isEditing={isEditing}
+        />
+      </SafeAreaView>
+    );
+  }
+
+  if (selectedGoal) {
+    return (
+      <SafeAreaView style={styles.safeArea} edges={['top']}>
+        <View style={styles.header}>
+          <TouchableOpacity 
+            onPress={() => setSelectedGoal(null)}
+            style={styles.backButton}
+          >
+            <Ionicons name="arrow-back" size={24} color="#2C3E50" />
+          </TouchableOpacity>
+          <TouchableOpacity 
+            onPress={() => handleEditGoal(selectedGoal)}
+            style={styles.editButton}
+          >
+            <Ionicons name="pencil" size={24} color="#2C3E50" />
+          </TouchableOpacity>
+        </View>
+        <GoalDetails
+          goal={selectedGoal}
+          onUpdate={handleUpdateGoal}
+          onDelete={handleDeleteGoal}
+        />
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['top']}>
@@ -130,12 +248,11 @@ const GoalsScreen = () => {
         <Text style={styles.title}>Goals</Text>
         <TouchableOpacity 
           style={styles.addButton}
-          onPress={() => navigation.navigate('CreateGoal')}
+          onPress={handleAddGoal}
         >
           <Ionicons name="add-circle-outline" size={24} color="#1E4D6B" />
         </TouchableOpacity>
       </View>
-
       <ScrollView 
         style={styles.container}
         contentContainerStyle={styles.contentContainer}
@@ -149,7 +266,7 @@ const GoalsScreen = () => {
             <Text style={styles.emptyStateText}>No goals yet</Text>
             <TouchableOpacity 
               style={styles.createButton}
-              onPress={() => navigation.navigate('CreateGoal')}
+              onPress={handleAddGoal}
             >
               <Text style={styles.createButtonText}>Create Your First Goal</Text>
             </TouchableOpacity>
@@ -180,6 +297,12 @@ const styles = StyleSheet.create({
     fontSize: 24,
     fontWeight: 'bold',
     color: '#2C3E50',
+  },
+  backButton: {
+    padding: 8,
+  },
+  editButton: {
+    padding: 8,
   },
   addButton: {
     padding: 8,
@@ -217,12 +340,27 @@ const styles = StyleSheet.create({
     color: '#2C3E50',
     marginLeft: 8,
   },
+  goalStatusContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
   categoryBadge: {
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 4,
   },
   categoryText: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: '500',
+  },
+  statusBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 4,
+  },
+  statusText: {
     color: '#FFFFFF',
     fontSize: 12,
     fontWeight: '500',
@@ -307,21 +445,6 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 16,
     fontWeight: '600',
-  },
-  goalStatusContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  activeBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 4,
-  },
-  activeText: {
-    color: '#FFFFFF',
-    fontSize: 12,
-    fontWeight: '500',
   },
 });
 

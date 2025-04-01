@@ -14,6 +14,9 @@ export type HomeStackParamList = {
 // Pass the type to createNativeStackNavigator
 const Stack = createNativeStackNavigator<HomeStackParamList>();
 
+
+
+
 const HomeStack = () => {
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>

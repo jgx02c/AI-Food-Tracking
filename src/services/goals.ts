@@ -2,11 +2,12 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { StorageService } from './storage';
 import { FoodEntry } from './storage';
 import { WorkoutSession } from '../types/workout';
+import { GoalType } from '../types/goals';
 
 export interface Goal {
   id: string;
   title: string;
-  type: 'food' | 'workout' | 'weight';
+  type: GoalType;
   target: number;
   current: number;
   startDate: string;

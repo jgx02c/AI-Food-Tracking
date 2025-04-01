@@ -1,55 +1,43 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { GoalCardProps } from '../../types/goals';
 
-interface WeightSectionProps {
-  currentWeight: string;
-  targetWeight: string;
-  onPress: () => void;
-}
-
-const WeightSection = ({ currentWeight, targetWeight, onPress }: WeightSectionProps) => {
-  if (currentWeight === undefined || currentWeight === null || currentWeight === '') {
-    return <Text style={styles.emptyText}>No weight added today</Text>;
-  }
-
-  const current = parseFloat(currentWeight) || 0;
-  const target = parseFloat(targetWeight) || 0;
-  const progress = target > 0 ? (current / target) * 100 : 0;
+const GoalCard = ({ goal, onPress }: GoalCardProps) => {
+  const progress = (goal.current / goal.target) * 100;
 
   return (
     <TouchableOpacity 
       style={styles.goalCard}
-      onPress={onPress}
+      onPress={() => onPress(goal.id)}
     >
       <View style={styles.goalHeader}>
         <View style={styles.goalTitleContainer}>
           <Ionicons 
-            name="scale-outline"
+            name={
+              goal.type === 'food' ? 'restaurant-outline' :
+              goal.type === 'workout' ? 'fitness-outline' :
+              'scale-outline'
+            } 
             size={20} 
             color="#2C3E50" 
           />
-          <Text style={styles.goalTitle}>Today's Weight</Text>
+          <Text style={styles.goalTitle}>{goal.title}</Text>
         </View>
-        {target > 0 && (
-          <Text style={styles.goalProgress}>
-            {Math.round(progress)}%
-          </Text>
-        )}
+        <Text style={styles.goalProgress}>
+          {Math.round(progress)}%
+        </Text>
       </View>
-      {target > 0 && (
-        <View style={styles.progressBar}>
-          <View 
-            style={[
-              styles.progressFill,
-              { width: `${Math.min(progress, 100)}%` }
-            ]} 
-          />
-        </View>
-      )}
+      <View style={styles.progressBar}>
+        <View 
+          style={[
+            styles.progressFill,
+            { width: `${Math.min(progress, 100)}%` }
+          ]} 
+        />
+      </View>
       <Text style={styles.goalDetails}>
-        {current} kg
-        {target > 0 && ` / ${targetWeight} kg`}
+        {goal.current} / {goal.target} {goal.unit}
       </Text>
     </TouchableOpacity>
   );
@@ -104,11 +92,6 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#7F8C8D',
   },
-  emptyText: {
-    fontSize: 14,
-    color: '#7F8C8D',
-    textAlign: 'left',
-  },
 });
 
-export default WeightSection; 
+export default GoalCard; 

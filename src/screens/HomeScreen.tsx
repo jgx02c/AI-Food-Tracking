@@ -1,15 +1,13 @@
 import React, { useEffect, useState } from 'react';
-import { View, StyleSheet, ScrollView, RefreshControl, Alert, Platform, StatusBar, Text, TouchableOpacity } from 'react-native';
+import { View, StyleSheet, ScrollView, RefreshControl, Alert, Platform, StatusBar } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { DayStats, FoodEntry } from '../types';
+import { DayStats } from '../types';
 import { FoodEntriesService } from '../services/foodEntries';
 import { StorageService } from '../services/storage';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { WorkoutEntry, ActiveWorkout } from '../types/workout';
 import Header from '../components/home/Header';
-import WeightSection from '../components/home/WeightSection';
 import GoalsService, { Goal } from '../services/goals';
-import { Ionicons } from '@expo/vector-icons';
 
 // Navigation
 import { useNavigation } from '@react-navigation/native';
@@ -19,25 +17,20 @@ import type { CompositeNavigationProp } from '@react-navigation/native';
 import type { RootStackParamList } from '../types/navigation';
 import type { MainTabParamList } from '../types/navigation';
 
+// Components
+import ActiveGoalsSection from '../components/home/ActiveGoalsSection';
+import WeightProgressSection from '../components/home/WeightProgressSection';
+import WorkoutsProgressSection from '../components/home/WorkoutsProgressSection';
+import StatsProgressSection from '../components/home/StatsProgressSection';
+import FoodEntriesProgressSection from '../components/home/FoodEntriesProgressSection';
+
+// Types
+import { UserGoals } from '../types/home';
+
 type HomeScreenNavigationProp = CompositeNavigationProp<
   NativeStackNavigationProp<RootStackParamList>,
   BottomTabNavigationProp<MainTabParamList>
 >;
-
-// Components
-import WorkoutsSection from '../components/home/WorkoutsSection';
-import StatsSection from '../components/home/StatsSection';
-import FoodEntriesSection from '../components/home/FoodEntriesSection';
-
-
-interface UserGoals {
-  calorieGoal: string;
-  proteinGoal: string;
-  carbsGoal: string;
-  fatGoal: string;
-  weight: string;
-  targetWeight: string;
-}
 
 const HomeScreen = () => {
   const navigation = useNavigation<HomeScreenNavigationProp>();
@@ -133,10 +126,6 @@ const HomeScreen = () => {
         return workoutDate.toISOString().split('T')[0] === todayStr;
       });
       
-      console.log('Today:', todayStr);
-      console.log('All workouts:', allWorkouts);
-      console.log('Today\'s workouts:', todayWorkouts);
-      
       setTodayWorkouts(todayWorkouts);
       setCompletedWorkouts(allCompletedWorkouts);
     } catch (error) {
@@ -144,17 +133,6 @@ const HomeScreen = () => {
       Alert.alert('Error', 'Failed to fetch today\'s workouts');
     }
   };
-
-  const handleWorkoutPress = (date: string) => {
-    const workout = completedWorkouts.find(w => w.startTime.toISOString() === date);
-    if (workout) {
-      navigation.navigate('WorkoutDetails', { workoutId: workout.id }); 
-    } else {
-      console.log('No matching workout found');
-    }
-  };
-  
-  
 
   const onRefresh = async () => {
     setRefreshing(true);
@@ -184,94 +162,42 @@ const HomeScreen = () => {
           date={new Date().toLocaleDateString()} 
         />
 
-        {activeGoals.length > 0 && (
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Active Goals</Text>
-            {activeGoals.map(goal => {
-              const progress = (goal.current / goal.target) * 100;
-              return (
-                <TouchableOpacity 
-                  key={goal.id} 
-                  style={styles.goalCard}
-                  onPress={() => navigation.navigate('GoalDetails', { goalId: goal.id })}
-                >
-                  <View style={styles.goalHeader}>
-                    <View style={styles.goalTitleContainer}>
-                      <Ionicons 
-                        name={
-                          goal.type === 'food' ? 'restaurant-outline' :
-                          goal.type === 'workout' ? 'fitness-outline' :
-                          'scale-outline'
-                        } 
-                        size={20} 
-                        color="#2C3E50" 
-                      />
-                      <Text style={styles.goalTitle}>{goal.title}</Text>
-                    </View>
-                    <Text style={styles.goalProgress}>
-                      {Math.round(progress)}%
-                    </Text>
-                  </View>
-                  <View style={styles.progressBar}>
-                    <View 
-                      style={[
-                        styles.progressFill,
-                        { width: `${Math.min(progress, 100)}%` }
-                      ]} 
-                    />
-                  </View>
-                  <Text style={styles.goalDetails}>
-                    {goal.current} / {goal.target} {goal.unit}
-                  </Text>
-                </TouchableOpacity>
-              );
-            })}
-          </View>
-        )}
+        <ActiveGoalsSection 
+          goals={activeGoals}
+          onGoalPress={(goalId) => navigation.navigate('GoalDetails', { goalId })}
+        />
 
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Weight Progress</Text>
-          <WeightSection 
-            currentWeight={goals.weight}
-            targetWeight={goals.targetWeight}
-            onPress={() => navigation.navigate('Settings')}
-          />
-        </View>
+        <WeightProgressSection 
+          currentWeight={goals.weight}
+          targetWeight={goals.targetWeight}
+          onPress={() => navigation.navigate('Settings')}
+        />
 
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Today's Workouts</Text>
-          <WorkoutsSection 
-            todayWorkouts={todayWorkouts}
-            completedWorkouts={completedWorkouts}
-            onPress={() => navigation.navigate('Workout')}
-          />
-        </View>
+        <WorkoutsProgressSection 
+          todayWorkouts={todayWorkouts}
+          completedWorkouts={completedWorkouts}
+          onPress={() => navigation.navigate('Workout')}
+        />
 
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Today's Stats</Text>
-          <StatsSection 
-            stats={{
-              calories: todayStats.totalCalories,
-              protein: todayStats.totalProtein,
-              carbs: todayStats.totalCarbs,
-              fat: todayStats.totalFat,
-            }}
-            goals={{
-              calories: goals.calorieGoal,
-              protein: goals.proteinGoal,
-              carbs: goals.carbsGoal,
-              fat: goals.fatGoal,
-            }}
-          />
-        </View>
+        <StatsProgressSection 
+          stats={{
+            calories: todayStats.totalCalories,
+            protein: todayStats.totalProtein,
+            carbs: todayStats.totalCarbs,
+            fat: todayStats.totalFat,
+          }}
+          goals={{
+            calories: goals.calorieGoal,
+            protein: goals.proteinGoal,
+            carbs: goals.carbsGoal,
+            fat: goals.fatGoal,
+          }}
+        />
 
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Today's Food</Text>
-          <FoodEntriesSection 
-            entries={todayStats.entries}
-            onPress={() => navigation.navigate('FoodEntries')}
-          />
-        </View>
+        <FoodEntriesProgressSection 
+          entries={todayStats.entries}
+          onPress={() => navigation.navigate('FoodEntries')}
+        />
       </ScrollView>
     </SafeAreaView>
   );
@@ -287,63 +213,6 @@ const styles = StyleSheet.create({
   },
   contentContainer: {
     padding: 16,
-  },
-  section: {
-    marginBottom: 24,
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#2C3E50',
-    marginBottom: 12,
-  },
-  goalCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    padding: 12,
-    marginBottom: 8,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  goalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  goalTitleContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  goalTitle: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#2C3E50',
-    marginLeft: 8,
-  },
-  goalProgress: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#2C3E50',
-  },
-  progressBar: {
-    height: 6,
-    backgroundColor: '#F8F9FA',
-    borderRadius: 3,
-    overflow: 'hidden',
-    marginBottom: 4,
-  },
-  progressFill: {
-    height: '100%',
-    backgroundColor: '#1E4D6B',
-    borderRadius: 3,
-  },
-  goalDetails: {
-    fontSize: 12,
-    color: '#7F8C8D',
   },
 });
 

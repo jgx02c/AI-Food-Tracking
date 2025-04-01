@@ -19,8 +19,8 @@ const WorkoutsSection = ({ todayWorkouts, completedWorkouts, onPress }: Workouts
         <Text style={styles.emptyText}>No workouts planned for today</Text>
       ) : (
         <>
-          {todayWorkouts.slice(0, 3).map(workout => (
-            <View key={workout.date} style={styles.workoutCard}>
+          {todayWorkouts.slice(0, 3).map((workout, index) => (
+            <View key={`${workout.date}-${index}`} style={styles.workoutCard}>
               <View style={styles.workoutHeader}>
                 <View style={styles.workoutTitleContainer}>
                   <Ionicons name="fitness-outline" size={20} color="#2C3E50" />

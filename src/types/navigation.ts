@@ -1,12 +1,6 @@
 import { NavigatorScreenParams } from '@react-navigation/native';
-
-export type RootTabParamList = {
-  Home: undefined;
-  Goals: undefined;
-  Workout: undefined;
-  FoodEntries: undefined;
-  Settings: undefined;
-};
+import { WorkoutStackParamList } from '../navigation/WorkoutStack';
+import { HomeStackParamList } from '../navigation/HomeStack';
 
 export type SettingsStackParamList = {
   SettingsHome: undefined;
@@ -15,6 +9,14 @@ export type SettingsStackParamList = {
   BackupSettings: undefined;
   AboutSettings: undefined;
   LegalSettings: undefined;
+};
+
+export type MainTabParamList = {
+  Home: NavigatorScreenParams<HomeStackParamList>;
+  Goals: undefined;
+  Workout: NavigatorScreenParams<WorkoutStackParamList>;
+  FoodEntries: undefined;
+  Settings: NavigatorScreenParams<SettingsStackParamList>;
 };
 
 export type RootStackParamList = {
@@ -32,14 +34,6 @@ export type RootStackParamList = {
   AboutSettings: undefined;
   LegalSettings: undefined;
   AddWeight: undefined;
-};
-
-export type MainTabParamList = {
-  Home: undefined;
-  Goals: undefined;
-  Workout: undefined;
-  FoodEntries: undefined;
-  Settings: undefined;
 };
 
 declare global {

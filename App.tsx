@@ -10,7 +10,7 @@ import { useNavigation } from '@react-navigation/native';
 // Import screens
 import HomeScreen from './src/screens/HomeScreen';
 import GoalsScreen from './src/screens/GoalsScreen';
-import WorkoutScreen from './src/screens/WorkoutScreen';
+import WorkoutStack from './src/navigation/WorkoutStack';
 import FoodEntriesScreen from './src/screens/FoodEntriesScreen';
 import WorkoutDetailsScreen from './src/screens/WorkoutDetailsScreen';
 import CameraScreen from './src/screens/CameraScreen';
@@ -64,7 +64,7 @@ const MainTabs = () => {
     >
       <Tab.Screen name="Home" component={HomeScreen} />
       <Tab.Screen name="Goals" component={GoalsScreen} />
-      <Tab.Screen name="Workout" component={WorkoutScreen} />
+      <Tab.Screen name="Workout" component={WorkoutStack} />
       <Tab.Screen name="FoodEntries" component={FoodEntriesScreen} />
       <Tab.Screen name="Settings" component={SettingsStack} />
     </Tab.Navigator>

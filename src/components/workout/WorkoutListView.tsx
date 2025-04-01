@@ -1,93 +1,108 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  ScrollView,
+  RefreshControl,
+} from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { ActiveWorkout } from '../../types/workout';
-import { format } from 'date-fns';
-import { useNavigation } from '@react-navigation/native';
-
-const formatDuration = (duration: number) => {
-  const minutes = Math.floor(duration / 60);
-  const seconds = duration % 60;
-  return `${minutes}:${seconds.toString().padStart(2, '0')}`;
-};
+import { WorkoutTemplate, ActiveWorkout } from '../../types/workout';
+import TemplateList from './TemplateList';
+import WorkoutHistoryList from './WorkoutHistoryList';
+import { isToday, isYesterday, isThisWeek } from 'date-fns';
 
 interface WorkoutListViewProps {
-  groupedWorkouts: {
-    today: ActiveWorkout[];
-    yesterday: ActiveWorkout[];
-    pastWeek: ActiveWorkout[];
-    older: ActiveWorkout[];
-  };
-  onLoadMore: () => void;
+  activeTab: 'templates' | 'workouts';
+  templates: WorkoutTemplate[];
+  completedWorkouts: ActiveWorkout[];
   hasMore: boolean;
+  refreshing: boolean;
+  onLoadMore: () => void;
+  onRefresh: () => void;
+  onEditTemplate: (template?: WorkoutTemplate) => void;
+  onDeleteTemplate: (templateId: string) => void;
+  onStartWorkout: (template: WorkoutTemplate) => void;
+  onCreateTemplate: () => void;
+  onTabChange: (tab: 'templates' | 'workouts') => void;
 }
 
-const WorkoutListView: React.FC<WorkoutListViewProps> = ({ 
-  groupedWorkouts, 
+const WorkoutListView: React.FC<WorkoutListViewProps> = ({
+  activeTab,
+  templates,
+  completedWorkouts,
+  hasMore,
+  refreshing,
   onLoadMore,
-  hasMore 
+  onRefresh,
+  onEditTemplate,
+  onDeleteTemplate,
+  onStartWorkout,
+  onCreateTemplate,
+  onTabChange,
 }) => {
-  const navigation = useNavigation();
-
-  const handleWorkoutPress = (workout: ActiveWorkout) => {
-    navigation.navigate('WorkoutDetails', { workoutId: workout.id });
-  };
-
-  const renderWorkoutGroup = (title: string, workouts: ActiveWorkout[]) => {
-    if (workouts.length === 0) return null;
-
-    return (
-      <View style={styles.groupContainer}>
-        <View style={styles.groupHeader}>
-          <Text style={styles.groupTitle}>{title}</Text>
-        </View>
-        <View style={styles.divider} />
-        <View style={styles.workoutList}>
-          {workouts.map((workout) => (
-            <TouchableOpacity
-              key={workout.id}
-              style={styles.workoutCard}
-              onPress={() => handleWorkoutPress(workout)}
-            >
-              <View style={styles.workoutHeader}>
-                <Text style={styles.workoutName}>{workout.template?.name || 'Unknown Workout'}</Text>
-                <Text style={styles.workoutTime}>
-                  {format(new Date(workout.startTime), 'h:mm a')}
-                </Text>
-              </View>
-              <View style={styles.workoutStats}>
-                <Text style={styles.workoutStat}>
-                  {workout.exercises.length} exercises
-                </Text>
-                <Text style={styles.workoutDuration}>
-                  {workout.endTime ? formatDuration(Math.floor((new Date(workout.endTime).getTime() - new Date(workout.startTime).getTime()) / 1000)) : 'In Progress'}
-                </Text>
-              </View>
-            </TouchableOpacity>
-          ))}
-        </View>
-      </View>
-    );
+  const groupedWorkouts = {
+    today: completedWorkouts.filter(workout => isToday(new Date(workout.startTime))),
+    yesterday: completedWorkouts.filter(workout => isYesterday(new Date(workout.startTime))),
+    pastWeek: completedWorkouts.filter(workout => 
+      isThisWeek(new Date(workout.startTime)) && 
+      !isToday(new Date(workout.startTime)) && 
+      !isYesterday(new Date(workout.startTime))
+    ),
+    older: completedWorkouts.filter(workout => 
+      !isThisWeek(new Date(workout.startTime))
+    ),
   };
 
   return (
     <ScrollView 
       style={styles.container}
-      onScroll={({ nativeEvent }) => {
-        const { layoutMeasurement, contentOffset, contentSize } = nativeEvent;
-        const paddingToBottom = 20;
-        const isCloseToBottom = layoutMeasurement.height + contentOffset.y >= contentSize.height - paddingToBottom;
-        
-        if (isCloseToBottom && hasMore) {
-          onLoadMore();
-        }
-      }}
-      scrollEventThrottle={400}
+      contentContainerStyle={styles.contentContainer}
+      refreshControl={
+        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+      }
     >
-      {renderWorkoutGroup('Today', groupedWorkouts.today)}
-      {renderWorkoutGroup('Yesterday', groupedWorkouts.yesterday)}
-      {renderWorkoutGroup('Past Week', groupedWorkouts.pastWeek)}
-      {renderWorkoutGroup('Older', groupedWorkouts.older)}
+      {activeTab === 'templates' ? (
+        templates.length === 0 ? (
+          <View style={styles.emptyState}>
+            <Ionicons name="barbell-outline" size={48} color="#BDC3C7" />
+            <Text style={styles.emptyStateText}>No templates yet</Text>
+            <TouchableOpacity 
+              style={styles.createButton}
+              onPress={onCreateTemplate}
+            >
+              <Text style={styles.createButtonText}>Create Your First Template</Text>
+            </TouchableOpacity>
+          </View>
+        ) : (
+          <TemplateList
+            templates={templates}
+            onEditTemplate={onEditTemplate}
+            onDeleteTemplate={onDeleteTemplate}
+            onStartWorkout={onStartWorkout}
+          />
+        )
+      ) : (
+        completedWorkouts.length === 0 ? (
+          <View style={styles.emptyState}>
+            <Ionicons name="fitness-outline" size={48} color="#BDC3C7" />
+            <Text style={styles.emptyStateText}>No workouts completed yet</Text>
+            <TouchableOpacity 
+              style={styles.createButton}
+              onPress={() => onTabChange('templates')}
+            >
+              <Text style={styles.createButtonText}>Create a Template and Start Working Out</Text>
+            </TouchableOpacity>
+          </View>
+        ) : (
+          <WorkoutHistoryList
+            groupedWorkouts={groupedWorkouts}
+            onLoadMore={onLoadMore}
+            hasMore={hasMore}
+          />
+        )
+      )}
     </ScrollView>
   );
 };
@@ -95,69 +110,38 @@ const WorkoutListView: React.FC<WorkoutListViewProps> = ({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F5F5F0',
   },
-  groupContainer: {
-    marginBottom: 24,
-  },
-  groupHeader: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-  },
-  groupTitle: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: '#2C3E50',
-  },
-  divider: {
-    height: 1,
-    backgroundColor: '#E0E0E0',
-    marginHorizontal: 16,
-    marginBottom: 8,
-  },
-  workoutList: {
-    paddingHorizontal: 16,
-  },
-  workoutCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
+  contentContainer: {
     padding: 16,
-    marginBottom: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
   },
-  workoutHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+  emptyState: {
     alignItems: 'center',
-    marginBottom: 8,
+    justifyContent: 'center',
+    padding: 32,
+    flex: 1,
+    minHeight: 400,
   },
-  workoutName: {
+  emptyStateText: {
+    fontSize: 16,
+    color: '#7F8C8D',
+    marginTop: 16,
+    marginBottom: 24,
+    textAlign: 'center',
+    paddingHorizontal: 24,
+  },
+  createButton: {
+    backgroundColor: '#1E4D6B',
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 8,
+    minWidth: 200,
+    alignItems: 'center',
+  },
+  createButtonText: {
+    color: '#FFFFFF',
     fontSize: 16,
     fontWeight: '600',
-    color: '#2C3E50',
-    flex: 1,
-  },
-  workoutTime: {
-    fontSize: 14,
-    color: '#7F8C8D',
-    marginLeft: 8,
-  },
-  workoutStats: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  workoutStat: {
-    fontSize: 14,
-    color: '#7F8C8D',
-  },
-  workoutDuration: {
-    fontSize: 14,
-    color: '#7F8C8D',
+    textAlign: 'center',
   },
 });
 
