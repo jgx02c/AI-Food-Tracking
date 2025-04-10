@@ -1,7 +1,8 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Platform, ActionSheetIOS, Alert } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
+import { showActionSheet } from '../../utils/ActionSheet';
 
 interface HeaderProps {
   title: string;
@@ -12,34 +13,17 @@ const Header = ({ title, date }: HeaderProps) => {
   const navigation = useNavigation();
 
   const showAddOptions = () => {
-    if (Platform.OS === 'ios') {
-      ActionSheetIOS.showActionSheetWithOptions(
-        {
-          options: ['Cancel', 'Add Weight'],
-          cancelButtonIndex: 0,
-        },
-        (buttonIndex: number) => {
-          if (buttonIndex === 1) {
-            navigation.navigate('AddWeight');
-          }
+    showActionSheet(
+      {
+        options: ['Cancel', 'Add Weight'],
+        cancelButtonIndex: 0,
+      },
+      (buttonIndex: number) => {
+        if (buttonIndex === 1) {
+          navigation.navigate('AddWeight');
         }
-      );
-    } else {
-      Alert.alert(
-        'Add Weight',
-        'Would you like to add your weight?',
-        [
-          {
-            text: 'Cancel',
-            style: 'cancel',
-          },
-          {
-            text: 'Add Weight',
-            onPress: () => navigation.navigate('AddWeight'),
-          },
-        ]
-      );
-    }
+      }
+    );
   };
 
   return (

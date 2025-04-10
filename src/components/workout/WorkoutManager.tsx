@@ -1,7 +1,8 @@
 import React from 'react';
-import { Alert, ActionSheetIOS } from 'react-native';
+import { Alert } from 'react-native';
 import { WorkoutTemplate, ActiveWorkout } from '../../types/workout';
 import { StorageService } from '../../services/storage';
+import { showActionSheet } from '../../utils/ActionSheet';
 
 interface WorkoutManagerProps {
   templates: WorkoutTemplate[];
@@ -123,7 +124,7 @@ const WorkoutManager: React.FC<WorkoutManagerProps> = ({
   };
 
   const showAddOptions = () => {
-    ActionSheetIOS.showActionSheetWithOptions(
+    showActionSheet(
       {
         options: ['Cancel', 'Add Template'],
         cancelButtonIndex: 0,

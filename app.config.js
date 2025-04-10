@@ -28,7 +28,29 @@ module.exports = {
       package: 'com.yourcompany.aifoodtracking'
     },
     web: {
-      favicon: './assets/favicon.png'
+      favicon: './assets/favicon.png',
+      bundler: 'webpack',
+      output: 'static',
+      build: {
+        babel: {
+          include: ['@react-native-async-storage/async-storage']
+        }
+      },
+      pwa: {
+        enabled: true,
+        startUrl: '/',
+        scope: '/',
+        display: 'standalone',
+        orientation: 'portrait',
+        backgroundColor: '#ffffff',
+        themeColor: '#000000',
+        icon: './assets/icon.png',
+        splash: {
+          image: './assets/splash.png',
+          resizeMode: 'contain',
+          backgroundColor: '#ffffff'
+        }
+      }
     },
     extra: {
       eas: {

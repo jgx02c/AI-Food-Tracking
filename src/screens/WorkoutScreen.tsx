@@ -4,7 +4,6 @@ import {
   StyleSheet,
   Platform,
   StatusBar,
-  ActionSheetIOS,
   TouchableOpacity,
   Text,
 } from 'react-native';
@@ -18,6 +17,7 @@ import WorkoutTemplateEditor from '../components/workout/WorkoutTemplateEditor';
 import { WorkoutStackParamList } from '../navigation/WorkoutStack';
 import { WorkoutTemplate, ActiveWorkout } from '../types/workout';
 import { StorageService } from '../services/storage';
+import { showActionSheet } from '../utils/ActionSheet';
 
 type TabType = 'templates' | 'workouts';
 type WorkoutScreenNavigationProp = NativeStackNavigationProp<WorkoutStackParamList>;
@@ -158,20 +158,18 @@ const WorkoutScreen = () => {
           activeTab={activeTab}
           onTabChange={setActiveTab}
           onAddPress={() => {
-            if (Platform.OS === 'ios') {
-              ActionSheetIOS.showActionSheetWithOptions(
-                {
-                  options: ['Cancel', 'Add Template'],
-                  cancelButtonIndex: 0,
-                },
-                (buttonIndex: number) => {
-                  if (buttonIndex === 1) {
-                    setEditingTemplate(undefined);
-                    setShowTemplateEditor(true);
-                  }
+            showActionSheet(
+              {
+                options: ['Cancel', 'Add Template'],
+                cancelButtonIndex: 0,
+              },
+              (buttonIndex: number) => {
+                if (buttonIndex === 1) {
+                  setEditingTemplate(undefined);
+                  setShowTemplateEditor(true);
                 }
-              );
-            }
+              }
+            );
           }}
         />
 

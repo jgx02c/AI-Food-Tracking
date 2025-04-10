@@ -1,11 +1,12 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, RefreshControl, Platform, ActionSheetIOS, Alert } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, RefreshControl, Platform, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { FoodEntry } from '../services/storage';
 import { FoodEntriesService } from '../services/foodEntries';
 import { useNavigation } from '@react-navigation/native';
 import { format, isToday, isYesterday, isThisWeek, subWeeks, isWithinInterval } from 'date-fns';
+import { showActionSheet } from '../utils/ActionSheet';
 
 type GroupedEntries = {
   today: FoodEntry[];
@@ -81,7 +82,7 @@ const FoodEntriesScreen = () => {
   }, []);
 
   const showAddOptions = () => {
-    ActionSheetIOS.showActionSheetWithOptions(
+    showActionSheet(
       {
         options: ['Cancel', 'Add with Camera', 'Add Manually'],
         cancelButtonIndex: 0,
