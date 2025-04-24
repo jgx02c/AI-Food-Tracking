@@ -21,14 +21,17 @@ const ActiveWorkoutScreen = () => {
 
   useEffect(() => {
     loadActiveWorkout();
+  }, []);
+
+  useEffect(() => {
     const timer = setInterval(() => {
-      if (!isTimerPaused && workout) {
+      if (!isTimerPaused) {
         setElapsedTime(prev => prev + 1);
       }
     }, 1000);
 
     return () => clearInterval(timer);
-  }, [isTimerPaused, workout]);
+  }, [isTimerPaused]);
 
   const loadActiveWorkout = async () => {
     try {
