@@ -1,10 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, RefreshControl, Alert, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { StorageService } from '../services/storage';
+import { StorageService } from '../../services/storage';
 import { Ionicons } from '@expo/vector-icons';
 import { useRoute, useNavigation } from '@react-navigation/native';
-import { ActiveWorkout } from '../types/workout';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { WorkoutStackParamList } from '../../navigation/WorkoutStack';
+import { ActiveWorkout } from '../../types/workout';
 
 const WorkoutDetailsScreen = () => {
   const route = useRoute();

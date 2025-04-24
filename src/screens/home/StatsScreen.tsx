@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { StorageService } from '../services/storage';
-import { WorkoutEntry } from '../types/workout';
-import { FoodEntry } from '../services/storage';
+import { StorageService } from '../../services/storage';
+import { WorkoutEntry } from '../../types/workout';
+import { FoodEntry } from '../../services/storage';
 import { format, startOfDay, endOfDay } from 'date-fns';
+import { useNavigation } from '@react-navigation/native';
 
 const StatsScreen = () => {
   const [activeTab, setActiveTab] = useState<'today' | 'history'>('today');

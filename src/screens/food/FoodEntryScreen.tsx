@@ -3,10 +3,10 @@ import { View, Text, StyleSheet, TouchableOpacity, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
-import { FoodEntry } from '../services/storage';
-import { FoodEntriesService } from '../services/foodEntries';
-import MealTypeSelector from '../components/food/MealTypeSelector';
-import FoodEntriesList from '../components/food/FoodEntriesList';
+import { FoodEntry } from '../../services/storage';
+import { FoodEntriesService } from '../../services/foodEntries';
+import MealTypeSelector from '../../components/food/MealTypeSelector';
+import FoodEntriesList from '../../components/food/FoodEntriesList';
 
 const FoodEntryScreen = () => {
   const navigation = useNavigation();
