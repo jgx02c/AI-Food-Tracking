@@ -3,11 +3,7 @@ import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { showActionSheet } from '../../utils/ActionSheet';
-
-interface HeaderProps {
-  title: string;
-  date: string;
-}
+import { HeaderProps } from '../../types/components';
 
 const Header = ({ title, date }: HeaderProps) => {
   const navigation = useNavigation();

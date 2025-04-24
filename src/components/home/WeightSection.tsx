@@ -1,12 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-
-interface WeightSectionProps {
-  currentWeight: string;
-  targetWeight: string;
-  onPress: () => void;
-}
+import { WeightSectionProps } from '../../types/components';
 
 const WeightSection = ({ currentWeight, targetWeight, onPress }: WeightSectionProps) => {
   if (currentWeight === undefined || currentWeight === null || currentWeight === '') {

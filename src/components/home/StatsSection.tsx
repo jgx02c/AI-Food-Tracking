@@ -1,20 +1,6 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
-
-interface StatsSectionProps {
-  stats: {
-    calories: number;
-    protein: number;
-    carbs: number;
-    fat: number;
-  };
-  goals: {
-    calories: string;
-    protein: string;
-    carbs: string;
-    fat: string;
-  };
-}
+import { StatsSectionProps } from '../../types/components';
 
 const StatsSection = ({ stats, goals }: StatsSectionProps) => {
   const getProgressColor = (current: number, goal: number) => {

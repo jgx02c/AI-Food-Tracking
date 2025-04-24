@@ -1,10 +1,6 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
-import { ActiveWorkout } from '../../types/workout';
-
-interface WorkoutCardProps {
-  workout: ActiveWorkout;
-}
+import { WorkoutCardProps } from '../../types/components';
 
 const WorkoutCard = ({ workout }: WorkoutCardProps) => {
   const duration = workout.endTime 

@@ -14,10 +14,9 @@ export interface FoodEntry extends Nutrients {
   notes?: string;
 }
 
-export interface FoodPrediction {
+export interface FoodPrediction extends Nutrients {
   name: string;
   confidence: number;
-  nutrients: Nutrients;
 }
 
 export interface FoodAnalysisResult {
@@ -32,4 +31,13 @@ export interface FoodHistoryEntry extends FoodEntry {
 export interface DailyNutrients extends Nutrients {
   date: string;
   entries: FoodEntry[];
+}
+
+// Group types for UI
+export interface GroupedEntries {
+  today: FoodEntry[];
+  yesterday: FoodEntry[];
+  thisWeek: FoodEntry[];
+  lastWeek: FoodEntry[];
+  older: FoodEntry[];
 } 

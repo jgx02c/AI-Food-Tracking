@@ -1,12 +1,6 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
-
-export type MealType = 'Breakfast' | 'Lunch' | 'Dinner' | 'Snacks';
-
-interface MealTypeSelectorProps {
-  selectedMeal: MealType;
-  onMealSelect: (meal: MealType) => void;
-}
+import { MealType, MealTypeSelectorProps } from '../../types/components';
 
 const MealTypeSelector: React.FC<MealTypeSelectorProps> = ({
   selectedMeal,

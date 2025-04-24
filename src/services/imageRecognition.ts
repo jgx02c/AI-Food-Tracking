@@ -1,13 +1,5 @@
 import { StorageService } from './storage';
-
-interface FoodPrediction {
-  name: string;
-  calories: number;
-  protein: number;
-  carbs: number;
-  fat: number;
-  confidence: number;
-}
+import { FoodPrediction } from '../types/food';
 
 export class ImageRecognitionService {
   private static API_URL = 'http://192.168.1.36:8000/images/process-image';

@@ -1,13 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { WorkoutEntry, ActiveWorkout } from '../../types/workout';
-
-interface WorkoutsSectionProps {
-  todayWorkouts: WorkoutEntry[];
-  completedWorkouts: ActiveWorkout[];
-  onPress: () => void;
-}
+import { WorkoutsSectionProps } from '../../types/components';
 
 const WorkoutsSection = ({ todayWorkouts, completedWorkouts, onPress }: WorkoutsSectionProps) => {
   return (

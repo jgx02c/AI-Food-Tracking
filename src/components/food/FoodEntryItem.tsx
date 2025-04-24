@@ -1,15 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-
-interface FoodEntryItemProps {
-  name: string;
-  calories: number;
-  protein: number;
-  carbs: number;
-  fat: number;
-  onDelete: () => void;
-}
+import { FoodEntryItemProps } from '../../types/components';
 
 const FoodEntryItem: React.FC<FoodEntryItemProps> = ({
   name,

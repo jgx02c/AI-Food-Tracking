@@ -2,22 +2,18 @@ import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, RefreshControl, Platform, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { FoodEntry } from '../../services/storage';
+import { FoodEntry, GroupedEntries } from '../../types/food';
 import { FoodEntriesService } from '../../services/foodEntries';
 import { useNavigation } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { format, isToday, isYesterday, isThisWeek, subWeeks, isWithinInterval } from 'date-fns';
 import { showActionSheet } from '../../utils/ActionSheet';
+import { FoodStackParamList } from '../../types/navigation';
 
-type GroupedEntries = {
-  today: FoodEntry[];
-  yesterday: FoodEntry[];
-  thisWeek: FoodEntry[];
-  lastWeek: FoodEntry[];
-  older: FoodEntry[];
-};
+type FoodEntriesScreenNavigationProp = NativeStackNavigationProp<FoodStackParamList>;
 
 const FoodEntriesScreen = () => {
-  const navigation = useNavigation();
+  const navigation = useNavigation<FoodEntriesScreenNavigationProp>();
   const [groupedEntries, setGroupedEntries] = useState<GroupedEntries>({
     today: [],
     yesterday: [],

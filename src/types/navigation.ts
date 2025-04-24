@@ -16,6 +16,7 @@ export interface FoodStackParamList {
   FoodLoading: { imageUri: string };
   FoodReview: { predictions: FoodEntry[] };
   FoodEntry: { entry?: FoodEntry };
+  ManualFoodEntry: undefined;
 }
 
 export interface GoalsStackParamList {
@@ -24,13 +25,13 @@ export interface GoalsStackParamList {
   GoalDetails: { goalId: string };
 }
 
-export type MainTabParamList = {
-  Home: NavigatorScreenParams<HomeStackParamList>;
+export interface MainTabParamList {
+  Home: undefined;
   Goals: undefined;
-  Workout: NavigatorScreenParams<WorkoutStackParamList>;
+  Workout: undefined;
   FoodEntries: undefined;
-  Settings: NavigatorScreenParams<SettingsStackParamList>;
-};
+  Settings: undefined;
+}
 
 export interface RootStackParamList {
   Home: undefined;

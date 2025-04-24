@@ -2,13 +2,7 @@ import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Modal, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
-
-interface TimePickerModalProps {
-  visible: boolean;
-  selectedTime: Date;
-  onClose: () => void;
-  onTimeChange: (event: any, selectedDate?: Date) => void;
-}
+import { TimePickerModalProps } from '../../types/components';
 
 const TimePickerModal: React.FC<TimePickerModalProps> = ({
   visible,

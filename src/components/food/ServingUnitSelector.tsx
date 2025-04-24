@@ -1,12 +1,6 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
-
-type ServingUnit = 'g' | 'ml' | 'oz';
-
-interface ServingUnitSelectorProps {
-  selectedUnit: ServingUnit;
-  onUnitChange: (unit: ServingUnit) => void;
-}
+import { ServingUnit, ServingUnitSelectorProps } from '../../types/components';
 
 const ServingUnitSelector: React.FC<ServingUnitSelectorProps> = ({
   selectedUnit,

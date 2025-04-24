@@ -1,10 +1,6 @@
 import React from 'react';
 import { View, Text, StyleSheet, Platform } from 'react-native';
-
-interface StreakCardProps {
-  label: string;
-  value: number;
-}
+import { StreakCardProps } from '../../types/components';
 
 const StreakCard = ({ label, value }: StreakCardProps) => {
   return (

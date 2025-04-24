@@ -1,10 +1,6 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
-import { FoodEntry } from '../../types';
-
-interface FoodEntryCardProps {
-  entry: FoodEntry;
-}
+import { FoodEntryCardProps } from '../../types/components';
 
 const FoodEntryCard = ({ entry }: FoodEntryCardProps) => {
   return (

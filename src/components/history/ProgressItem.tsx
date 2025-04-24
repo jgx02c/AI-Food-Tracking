@@ -1,12 +1,6 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
-
-interface ProgressItemProps {
-  label: string;
-  current: number;
-  goal: number;
-  unit?: string;
-}
+import { ProgressItemProps } from '../../types/components';
 
 const ProgressItem = ({ label, current, goal, unit = '' }: ProgressItemProps) => {
   const getProgressColor = (current: number, goal: number) => {

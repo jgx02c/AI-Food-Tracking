@@ -1,24 +1,10 @@
 import React from 'react';
 import { View, Text, StyleSheet, ScrollView } from 'react-native';
-import { FoodEntry } from '../../types';
-import { ActiveWorkout } from '../../types/workout';
+import { DailySummaryProps } from '../../types/components';
 import StreakCard from './StreakCard';
 import ProgressItem from './ProgressItem';
 import FoodEntryCard from './FoodEntryCard';
 import WorkoutCard from './WorkoutCard';
-
-interface DailySummaryProps {
-  date: Date;
-  foodEntries: FoodEntry[];
-  workouts: ActiveWorkout[];
-  streak: number;
-  goals: {
-    calories: number;
-    protein: number;
-    carbs: number;
-    fat: number;
-  };
-}
 
 const DailySummary = ({ date, foodEntries, workouts, streak, goals }: DailySummaryProps) => {
   const totalCalories = foodEntries.reduce((sum, entry) => sum + entry.calories, 0);
