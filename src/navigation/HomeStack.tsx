@@ -2,7 +2,7 @@ import React from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import HomeScreen from '../screens/home/HomeScreen';
 import WorkoutDetailsScreen from '../screens/workout/WorkoutDetailsScreen';
-import AddWeightScreen from '../screens/AddWeightScreen';
+import AddWeightScreen from '../screens/home/AddWeightScreen';
 
 // HomeStackParamList.ts
 export type HomeStackParamList = {

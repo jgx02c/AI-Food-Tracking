@@ -12,12 +12,12 @@ import GoalsScreen from './src/screens/goals/GoalsScreen';
 import WorkoutStack from './src/navigation/WorkoutStack';
 import FoodEntriesScreen from './src/screens/food/FoodEntriesScreen';
 import WorkoutDetailsScreen from './src/screens/workout/WorkoutDetailsScreen';
-import CameraScreen from './src/screens/camera/CameraScreen';
+import CameraScreen from './src/screens/food/CameraScreen';
 import CreateGoalScreen from './src/screens/goals/CreateGoalScreen';
 import GoalDetailsScreen from './src/screens/goals/GoalDetailsScreen';
 import SettingsStack from './src/navigation/SettingsStack';
 import ManualFoodEntryScreen from './src/screens/food/ManualFoodEntryScreen';
-import AddWeightScreen from './src/screens/AddWeightScreen';
+import AddWeightScreen from './src/screens/home/AddWeightScreen';
 import BottomTabNavigator from './src/navigation/BottomTabNavigator';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();

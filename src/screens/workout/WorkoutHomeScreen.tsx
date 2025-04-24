@@ -1,21 +1,24 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, RefreshControl, Alert } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, RefreshControl } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { WorkoutTemplate, ActiveWorkout } from '../../types/workout';
 import { StorageService } from '../../services/storage';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { WorkoutStackParamList } from '../../navigation/WorkoutStack';
+import { format } from 'date-fns';
 import WorkoutTemplateEditor from '../../components/workout/WorkoutTemplateEditor';
 
 type WorkoutScreenNavigationProp = NativeStackNavigationProp<WorkoutStackParamList>;
+type TabType = 'templates' | 'history';
 
 const WorkoutHomeScreen = () => {
   const navigation = useNavigation<WorkoutScreenNavigationProp>();
+  const [activeTab, setActiveTab] = useState<TabType>('templates');
   const [templates, setTemplates] = useState<WorkoutTemplate[]>([]);
   const [activeWorkout, setActiveWorkout] = useState<ActiveWorkout | null>(null);
+  const [completedWorkouts, setCompletedWorkouts] = useState<ActiveWorkout[]>([]);
   const [showTemplateEditor, setShowTemplateEditor] = useState(false);
   const [editingTemplate, setEditingTemplate] = useState<WorkoutTemplate | undefined>();
   const [refreshing, setRefreshing] = useState(false);
@@ -28,6 +31,7 @@ const WorkoutHomeScreen = () => {
     await Promise.all([
       loadTemplates(),
       loadActiveWorkout(),
+      loadCompletedWorkouts(),
     ]);
   };
 
@@ -38,19 +42,20 @@ const WorkoutHomeScreen = () => {
 
   const loadActiveWorkout = async () => {
     try {
-      const storedWorkout = await AsyncStorage.getItem('activeWorkout');
-      if (storedWorkout) {
-        const parsedWorkout = JSON.parse(storedWorkout);
-        // Convert string dates back to Date objects
-        parsedWorkout.startTime = new Date(parsedWorkout.startTime);
-        if (parsedWorkout.endTime) {
-          parsedWorkout.endTime = new Date(parsedWorkout.endTime);
-        }
-        setActiveWorkout(parsedWorkout);
-      }
+      const workout = await StorageService.getActiveWorkout();
+      setActiveWorkout(workout);
     } catch (error) {
       console.error('Error loading active workout:', error);
       setActiveWorkout(null);
+    }
+  };
+
+  const loadCompletedWorkouts = async () => {
+    try {
+      const workouts = await StorageService.getCompletedWorkouts();
+      setCompletedWorkouts(workouts);
+    } catch (error) {
+      console.error('Error loading completed workouts:', error);
     }
   };
 
@@ -79,12 +84,12 @@ const WorkoutHomeScreen = () => {
 
   const handleStartWorkout = async (template: WorkoutTemplate) => {
     try {
-      const workoutWithState: ActiveWorkout = {
+      const workoutWithState = {
         id: Date.now().toString(),
         templateId: template.id,
         template,
         startTime: new Date(),
-        status: 'inProgress',
+        status: 'inProgress' as const,
         exercises: template.exercises.map(exercise => ({
           ...exercise,
           sets: exercise.sets.map(set => ({
@@ -96,8 +101,7 @@ const WorkoutHomeScreen = () => {
           })),
         })),
       };
-      await AsyncStorage.setItem('activeWorkout', JSON.stringify(workoutWithState));
-      setActiveWorkout(workoutWithState);
+      await StorageService.saveActiveWorkout(workoutWithState);
       navigation.navigate('ActiveWorkout');
     } catch (error) {
       console.error('Error starting workout:', error);
@@ -110,66 +114,139 @@ const WorkoutHomeScreen = () => {
     setRefreshing(false);
   };
 
+  const renderTemplatesTab = () => (
+    <View style={styles.tabContent}>
+      {templates.length === 0 ? (
+        <View style={styles.emptyState}>
+          <Ionicons name="barbell-outline" size={48} color="#BDC3C7" />
+          <Text style={styles.emptyStateText}>No templates yet</Text>
+          <TouchableOpacity 
+            style={styles.createButton}
+            onPress={() => handleEditTemplate()}
+          >
+            <Text style={styles.createButtonText}>Create Your First Template</Text>
+          </TouchableOpacity>
+        </View>
+      ) : (
+        templates.map((template) => (
+          <TouchableOpacity
+            key={template.id}
+            style={styles.card}
+            onPress={() => handleStartWorkout(template)}
+          >
+            <View style={styles.cardHeader}>
+              <Text style={styles.cardTitle}>{template.name}</Text>
+              <View style={styles.cardActions}>
+                <TouchableOpacity
+                  style={styles.actionButton}
+                  onPress={() => handleEditTemplate(template)}
+                >
+                  <Ionicons name="pencil" size={20} color="#1E4D6B" />
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.actionButton}
+                  onPress={() => handleDeleteTemplate(template.id)}
+                >
+                  <Ionicons name="trash-outline" size={20} color="#E74C3C" />
+                </TouchableOpacity>
+              </View>
+            </View>
+            <Text style={styles.cardDetails}>
+              {template.exercises.length} exercises
+            </Text>
+          </TouchableOpacity>
+        ))
+      )}
+    </View>
+  );
+
+  const renderHistoryTab = () => (
+    <View style={styles.tabContent}>
+      {completedWorkouts.length === 0 ? (
+        <View style={styles.emptyState}>
+          <Ionicons name="fitness-outline" size={48} color="#BDC3C7" />
+          <Text style={styles.emptyStateText}>No completed workouts yet</Text>
+        </View>
+      ) : (
+        completedWorkouts.map((workout) => (
+          <TouchableOpacity
+            key={workout.id}
+            style={styles.card}
+            onPress={() => navigation.navigate('WorkoutDetails', { workoutId: workout.id })}
+          >
+            <View style={styles.cardHeader}>
+              <Text style={styles.cardTitle}>{workout.template.name}</Text>
+              <Ionicons name="chevron-forward" size={20} color="#7F8C8D" />
+            </View>
+            <Text style={styles.cardDate}>
+              {format(new Date(workout.startTime), 'MMM d, yyyy')}
+            </Text>
+            <Text style={styles.cardDetails}>
+              {workout.template.exercises.length} exercises
+            </Text>
+          </TouchableOpacity>
+        ))
+      )}
+    </View>
+  );
+
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
-      <ScrollView
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-        }
-      >
-        <View style={styles.header}>
-          <Text style={styles.title}>Workouts</Text>
+      <View style={styles.header}>
+        <Text style={styles.title}>Workouts</Text>
+        {activeTab === 'templates' && (
           <TouchableOpacity
             style={styles.addButton}
             onPress={() => handleEditTemplate()}
           >
-            <Ionicons name="add" size={24} color="#FFFFFF" />
-          </TouchableOpacity>
-        </View>
-
-        {activeWorkout && (
-          <TouchableOpacity
-            style={styles.activeWorkoutCard}
-            onPress={() => navigation.navigate('ActiveWorkout')}
-          >
-            <View style={styles.activeWorkoutHeader}>
-              <Text style={styles.activeWorkoutTitle}>Active Workout</Text>
-              <Ionicons name="chevron-forward" size={24} color="#2C3E50" />
-            </View>
-            <Text style={styles.activeWorkoutName}>{activeWorkout.template.name}</Text>
+            <Ionicons name="add-circle-outline" size={24} color="#1E4D6B" />
           </TouchableOpacity>
         )}
+      </View>
 
-        <View style={styles.templatesContainer}>
-          {templates.map((template) => (
-            <TouchableOpacity
-              key={template.id}
-              style={styles.templateCard}
-              onPress={() => handleStartWorkout(template)}
-            >
-              <View style={styles.templateHeader}>
-                <Text style={styles.templateName}>{template.name}</Text>
-                <View style={styles.templateActions}>
-                  <TouchableOpacity
-                    style={styles.editButton}
-                    onPress={() => handleEditTemplate(template)}
-                  >
-                    <Ionicons name="pencil" size={20} color="#1E4D6B" />
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={styles.deleteButton}
-                    onPress={() => handleDeleteTemplate(template.id)}
-                  >
-                    <Ionicons name="trash-outline" size={20} color="#E74C3C" />
-                  </TouchableOpacity>
-                </View>
-              </View>
-              <Text style={styles.templateDetails}>
-                {template.exercises.length} exercises
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </View>
+      {activeWorkout && (
+        <TouchableOpacity
+          style={styles.activeWorkoutCard}
+          onPress={() => navigation.navigate('ActiveWorkout')}
+        >
+          <View style={styles.activeWorkoutHeader}>
+            <Text style={styles.activeWorkoutTitle}>Active Workout</Text>
+            <Ionicons name="chevron-forward" size={24} color="#2C3E50" />
+          </View>
+          <Text style={styles.activeWorkoutName}>{activeWorkout.template.name}</Text>
+          <Text style={styles.activeWorkoutTime}>
+            Started at {format(new Date(activeWorkout.startTime), 'h:mm a')}
+          </Text>
+        </TouchableOpacity>
+      )}
+
+      <View style={styles.tabs}>
+        <TouchableOpacity
+          style={[styles.tab, activeTab === 'templates' && styles.activeTab]}
+          onPress={() => setActiveTab('templates')}
+        >
+          <Text style={[styles.tabText, activeTab === 'templates' && styles.activeTabText]}>
+            Templates
+          </Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.tab, activeTab === 'history' && styles.activeTab]}
+          onPress={() => setActiveTab('history')}
+        >
+          <Text style={[styles.tabText, activeTab === 'history' && styles.activeTabText]}>
+            History
+          </Text>
+        </TouchableOpacity>
+      </View>
+
+      <ScrollView
+        style={styles.scrollView}
+        contentContainerStyle={styles.scrollContent}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+        }
+      >
+        {activeTab === 'templates' ? renderTemplatesTab() : renderHistoryTab()}
       </ScrollView>
 
       {showTemplateEditor && (
@@ -202,22 +279,17 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: 24,
-    fontWeight: '600',
+    fontWeight: 'bold',
     color: '#2C3E50',
   },
   addButton: {
-    backgroundColor: '#1E4D6B',
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    justifyContent: 'center',
-    alignItems: 'center',
+    padding: 8,
   },
   activeWorkoutCard: {
     backgroundColor: '#FFFFFF',
-    margin: 16,
+    borderRadius: 12,
     padding: 16,
-    borderRadius: 8,
+    margin: 16,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
@@ -238,14 +310,49 @@ const styles = StyleSheet.create({
   activeWorkoutName: {
     fontSize: 18,
     color: '#2C3E50',
+    marginBottom: 4,
   },
-  templatesContainer: {
-    padding: 16,
+  activeWorkoutTime: {
+    fontSize: 14,
+    color: '#7F8C8D',
   },
-  templateCard: {
+  tabs: {
+    flexDirection: 'row',
     backgroundColor: '#FFFFFF',
+    paddingHorizontal: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E0E0E0',
+  },
+  tab: {
+    flex: 1,
+    paddingVertical: 16,
+    alignItems: 'center',
+  },
+  activeTab: {
+    borderBottomWidth: 2,
+    borderBottomColor: '#1E4D6B',
+  },
+  tabText: {
+    fontSize: 16,
+    fontWeight: '500',
+    color: '#7F8C8D',
+  },
+  activeTabText: {
+    color: '#1E4D6B',
+  },
+  scrollView: {
+    flex: 1,
+  },
+  scrollContent: {
     padding: 16,
-    borderRadius: 8,
+  },
+  tabContent: {
+    flex: 1,
+  },
+  card: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    padding: 16,
     marginBottom: 16,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
@@ -253,30 +360,55 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 3,
   },
-  templateHeader: {
+  cardHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 8,
   },
-  templateName: {
+  cardTitle: {
     fontSize: 18,
     fontWeight: '600',
     color: '#2C3E50',
   },
-  templateActions: {
+  cardActions: {
     flexDirection: 'row',
     gap: 8,
   },
-  editButton: {
+  actionButton: {
     padding: 4,
   },
-  deleteButton: {
-    padding: 4,
-  },
-  templateDetails: {
+  cardDate: {
     fontSize: 14,
     color: '#7F8C8D',
+    marginBottom: 4,
+  },
+  cardDetails: {
+    fontSize: 14,
+    color: '#7F8C8D',
+  },
+  emptyState: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 32,
+  },
+  emptyStateText: {
+    fontSize: 16,
+    color: '#7F8C8D',
+    marginTop: 8,
+    marginBottom: 16,
+  },
+  createButton: {
+    backgroundColor: '#1E4D6B',
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderRadius: 8,
+  },
+  createButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '600',
   },
 });
 

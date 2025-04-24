@@ -7,6 +7,8 @@ import { useRoute, useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { ActiveWorkout } from '../../types/workout';
 import { WorkoutStackParamList } from '../../navigation/WorkoutStack';
+import WorkoutCompletionStats from '../../components/workout/WorkoutCompletionStats';
+import WorkoutExerciseSummary from '../../components/workout/WorkoutExerciseSummary';
 
 type WorkoutScreenNavigationProp = NativeStackNavigationProp<WorkoutStackParamList>;
 
@@ -20,17 +22,9 @@ const WorkoutCompletionScreen = () => {
 
   const fetchWorkout = async () => {
     try {
-      // First try to get from completed workouts
+      setIsLoading(true);
       const completedWorkouts = await StorageService.getCompletedWorkouts();
-      let foundWorkout = completedWorkouts.find(w => w.id === workoutId);
-      
-      if (!foundWorkout) {
-        // If not found in completed, try active workouts
-        const activeWorkout = await StorageService.getActiveWorkout();
-        if (activeWorkout && activeWorkout.id === workoutId) {
-          foundWorkout = activeWorkout;
-        }
-      }
+      const foundWorkout = completedWorkouts.find(w => w.id === workoutId);
 
       if (foundWorkout) {
         // Convert string dates back to Date objects
@@ -40,13 +34,30 @@ const WorkoutCompletionScreen = () => {
         }
         setWorkout(foundWorkout);
       } else {
-        Alert.alert('Error', 'Workout not found');
-        navigation.navigate('WorkoutHome');
+        console.error('Workout not found:', workoutId);
+        Alert.alert(
+          'Error',
+          'Workout not found. Please try again.',
+          [
+            {
+              text: 'OK',
+              onPress: () => navigation.replace('WorkoutHome')
+            }
+          ]
+        );
       }
     } catch (error) {
       console.error('Error fetching workout:', error);
-      Alert.alert('Error', 'Failed to fetch workout details');
-      navigation.navigate('WorkoutHome');
+      Alert.alert(
+        'Error',
+        'Failed to load workout details. Please try again.',
+        [
+          {
+            text: 'OK',
+            onPress: () => navigation.replace('WorkoutHome')
+          }
+        ]
+      );
     } finally {
       setIsLoading(false);
     }
@@ -67,7 +78,7 @@ const WorkoutCompletionScreen = () => {
           onPress: async () => {
             try {
               await StorageService.deleteWorkout(workoutId);
-              navigation.goBack();
+              navigation.replace('WorkoutHome');
             } catch (error) {
               console.error('Error deleting workout:', error);
               Alert.alert('Error', 'Failed to delete workout');
@@ -106,7 +117,7 @@ const WorkoutCompletionScreen = () => {
           <Text style={styles.errorText}>Workout not found</Text>
           <TouchableOpacity 
             style={styles.doneButton}
-            onPress={() => navigation.navigate('WorkoutHome')}
+            onPress={() => navigation.replace('WorkoutHome')}
           >
             <Text style={styles.doneButtonText}>Go to Workouts</Text>
           </TouchableOpacity>
@@ -114,20 +125,6 @@ const WorkoutCompletionScreen = () => {
       </SafeAreaView>
     );
   }
-
-  const duration = Math.floor(
-    (new Date(workout.endTime || new Date()).getTime() - new Date(workout.startTime).getTime()) / 1000
-  );
-
-  const completedSets = workout.exercises.reduce(
-    (total, exercise) => total + exercise.sets.filter(set => set.completed).length,
-    0
-  );
-
-  const totalSets = workout.exercises.reduce(
-    (total, exercise) => total + exercise.sets.length,
-    0
-  );
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -146,44 +143,12 @@ const WorkoutCompletionScreen = () => {
           </TouchableOpacity>
         </View>
 
-        <View style={styles.statsContainer}>
-          <View style={styles.statCard}>
-            <Text style={styles.statValue}>{Math.floor(duration / 60)}m {duration % 60}s</Text>
-            <Text style={styles.statLabel}>Duration</Text>
-          </View>
-          <View style={styles.statCard}>
-            <Text style={styles.statValue}>{completedSets}/{totalSets}</Text>
-            <Text style={styles.statLabel}>Sets Completed</Text>
-          </View>
-          <View style={styles.statCard}>
-            <Text style={styles.statValue}>{workout.exercises.length}</Text>
-            <Text style={styles.statLabel}>Exercises</Text>
-          </View>
-        </View>
-
-        <View style={styles.exercisesContainer}>
-          {workout.exercises.map((exercise, index) => (
-            <View key={index} style={styles.exerciseCard}>
-              <Text style={styles.exerciseName}>{exercise.name}</Text>
-              {exercise.sets.map((set, setIndex) => (
-                <View key={setIndex} style={styles.setRow}>
-                  <Text style={styles.setNumber}>Set {setIndex + 1}</Text>
-                  <Text style={styles.setDetails}>
-                    {set.actualWeight ? `${set.actualWeight}kg` : '-'} × {set.actualReps || '-'}
-                  </Text>
-                  <View style={styles.setStatus}>
-                    {set.completed && <Ionicons name="checkmark-circle" size={20} color="#2ECC71" />}
-                    {set.isFailure && <Ionicons name="close-circle" size={20} color="#E74C3C" />}
-                  </View>
-                </View>
-              ))}
-            </View>
-          ))}
-        </View>
+        <WorkoutCompletionStats workout={workout} />
+        <WorkoutExerciseSummary exercises={workout.exercises} />
 
         <TouchableOpacity 
           style={styles.doneButton}
-          onPress={() => navigation.navigate('WorkoutHome')}
+          onPress={() => navigation.replace('WorkoutHome')}
         >
           <Text style={styles.doneButtonText}>Done</Text>
         </TouchableOpacity>
@@ -202,26 +167,25 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
+  loadingText: {
+    marginTop: 16,
+    fontSize: 16,
+    color: '#7F8C8D',
+  },
   errorContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+    padding: 16,
   },
   errorText: {
     fontSize: 16,
-    color: '#2C3E50',
+    color: '#E74C3C',
     marginBottom: 16,
-  },
-  backButtonText: {
-    color: '#1E4D6B',
-    fontSize: 16,
-  },
-  backButton: {
-    padding: 8,
   },
   header: {
     flexDirection: 'row',
-    justifyContent: 'center',
+    justifyContent: 'space-between',
     alignItems: 'center',
     padding: 16,
     backgroundColor: '#FFFFFF',
@@ -229,83 +193,18 @@ const styles = StyleSheet.create({
     borderBottomColor: '#E0E0E0',
   },
   title: {
-    fontSize: 20,
-    fontWeight: '600',
+    fontSize: 24,
+    fontWeight: 'bold',
     color: '#2C3E50',
-    textAlign: 'center',
   },
   deleteButton: {
     padding: 8,
   },
-  statsContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    padding: 16,
-    backgroundColor: '#FFFFFF',
-  },
-  statCard: {
-    alignItems: 'center',
-  },
-  statValue: {
-    fontSize: 24,
-    fontWeight: '600',
-    color: '#2C3E50',
-  },
-  statLabel: {
-    fontSize: 14,
-    color: '#7F8C8D',
-    marginTop: 4,
-  },
-  exercisesContainer: {
-    padding: 16,
-  },
-  exerciseCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 8,
-    padding: 16,
-    marginBottom: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  exerciseName: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#2C3E50',
-    marginBottom: 12,
-  },
-  setRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: 8,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F0F0F0',
-  },
-  setNumber: {
-    fontSize: 16,
-    color: '#7F8C8D',
-  },
-  setDetails: {
-    fontSize: 16,
-    color: '#2C3E50',
-  },
-  setStatus: {
-    width: 24,
-    alignItems: 'center',
-  },
-  loadingText: {
-    fontSize: 16,
-    color: '#7F8C8D',
-    marginTop: 16,
-  },
   doneButton: {
-    backgroundColor: '#1E4D6B',
-    padding: 16,
-    borderRadius: 8,
+    backgroundColor: '#2ECC71',
     margin: 16,
+    padding: 16,
+    borderRadius: 12,
     alignItems: 'center',
   },
   doneButtonText: {

@@ -2,7 +2,7 @@ import React from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import FoodEntriesScreen from '../screens/food/FoodEntriesScreen';
 import ManualFoodEntryScreen from '../screens/food/ManualFoodEntryScreen';
-import CameraScreen from '../screens/camera/CameraScreen';
+import CameraScreen from '../screens/food/CameraScreen';
 import FoodLoadingScreen from '../screens/food/FoodLoadingScreen';
 import FoodReviewScreen from '../screens/food/FoodReviewScreen';
 

@@ -1,18 +1,20 @@
 import React from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import WorkoutScreen from '../screens/workout/WorkoutScreen';
+import WorkoutHomeScreen from '../screens/workout/WorkoutHomeScreen';
+import WorkoutTemplateScreen from '../screens/workout/WorkoutTemplateScreen';
 import ActiveWorkoutScreen from '../screens/workout/ActiveWorkoutScreen';
 import WorkoutCompletionScreen from '../screens/workout/WorkoutCompletionScreen';
 import WorkoutDetailsScreen from '../screens/workout/WorkoutDetailsScreen';
 
-const Stack = createNativeStackNavigator();
-
 export type WorkoutStackParamList = {
   WorkoutHome: undefined;
+  WorkoutTemplate: undefined;
   ActiveWorkout: undefined;
   WorkoutCompletion: { workoutId: string };
   WorkoutDetails: { workoutId: string };
 };
+
+const Stack = createNativeStackNavigator<WorkoutStackParamList>();
 
 const WorkoutStack = () => {
   return (
@@ -23,10 +25,41 @@ const WorkoutStack = () => {
       }}
       initialRouteName="WorkoutHome"
     >
-      <Stack.Screen name="WorkoutHome" component={WorkoutScreen} />
-      <Stack.Screen name="ActiveWorkout" component={ActiveWorkoutScreen} />
-      <Stack.Screen name="WorkoutCompletion" component={WorkoutCompletionScreen} />
-      <Stack.Screen name="WorkoutDetails" component={WorkoutDetailsScreen} />
+      {/* Main entry point - shows workout history and quick actions */}
+      <Stack.Screen 
+        name="WorkoutHome" 
+        component={WorkoutHomeScreen}
+      />
+
+      {/* Workout template management */}
+      <Stack.Screen 
+        name="WorkoutTemplate" 
+        component={WorkoutTemplateScreen}
+      />
+
+      {/* Active workout session */}
+      <Stack.Screen 
+        name="ActiveWorkout" 
+        component={ActiveWorkoutScreen}
+        options={{
+          gestureEnabled: false, // Prevent accidental back gesture during workout
+        }}
+      />
+
+      {/* Workout completion summary */}
+      <Stack.Screen 
+        name="WorkoutCompletion" 
+        component={WorkoutCompletionScreen}
+        options={{
+          gestureEnabled: false, // Force user to either save or discard
+        }}
+      />
+
+      {/* Detailed view of a completed workout */}
+      <Stack.Screen 
+        name="WorkoutDetails" 
+        component={WorkoutDetailsScreen}
+      />
     </Stack.Navigator>
   );
 };
