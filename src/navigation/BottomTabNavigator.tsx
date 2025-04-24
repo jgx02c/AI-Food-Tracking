@@ -3,8 +3,8 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
 import HomeStack from './HomeStack';
 import WorkoutStack, { WorkoutStackParamList } from './WorkoutStack';
-import HistoryScreen from '../screens/HistoryScreen';
-import SettingsScreen from '../screens/SettingsScreen';
+import HistoryScreen from '../screens/home/HistoryScreen';
+import SettingsScreen from '../screens/settings/SettingsScreen';
 import { HomeStackParamList } from './HomeStack';
 import type { NavigatorScreenParams } from '@react-navigation/native';
 

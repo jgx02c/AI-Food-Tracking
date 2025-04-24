@@ -2,13 +2,13 @@ import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { StorageService } from '../services/storage';
-import { FoodEntry } from '../services/storage';
-import { WorkoutEntry, ActiveWorkout } from '../types/workout';
+import { StorageService } from '../../services/storage';
+import { FoodEntry } from '../../services/storage';
+import { WorkoutEntry, ActiveWorkout } from '../../types/workout';
 import { format } from 'date-fns';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { RootStackParamList } from '../types/navigation';
+import { RootStackParamList } from '../../types/navigation';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 

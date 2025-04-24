@@ -1,12 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, RefreshControl, Alert, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { StorageService } from '../services/storage';
+import { StorageService } from '../../services/storage';
 import { Ionicons } from '@expo/vector-icons';
 import { useRoute, useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { ActiveWorkout } from '../types/workout';
-import { WorkoutStackParamList } from '../navigation/WorkoutStack';
+import { ActiveWorkout } from '../../types/workout';
+import { WorkoutStackParamList } from '../../navigation/WorkoutStack';
 
 type WorkoutScreenNavigationProp = NativeStackNavigationProp<WorkoutStackParamList>;
 
@@ -20,9 +20,18 @@ const WorkoutCompletionScreen = () => {
 
   const fetchWorkout = async () => {
     try {
-      const allWorkouts = await StorageService.getCompletedWorkouts();
-      const foundWorkout = allWorkouts.find(w => w.id === workoutId);
+      // First try to get from completed workouts
+      const completedWorkouts = await StorageService.getCompletedWorkouts();
+      let foundWorkout = completedWorkouts.find(w => w.id === workoutId);
       
+      if (!foundWorkout) {
+        // If not found in completed, try active workouts
+        const activeWorkout = await StorageService.getActiveWorkout();
+        if (activeWorkout && activeWorkout.id === workoutId) {
+          foundWorkout = activeWorkout;
+        }
+      }
+
       if (foundWorkout) {
         // Convert string dates back to Date objects
         foundWorkout.startTime = new Date(foundWorkout.startTime);
@@ -32,12 +41,12 @@ const WorkoutCompletionScreen = () => {
         setWorkout(foundWorkout);
       } else {
         Alert.alert('Error', 'Workout not found');
-        navigation.goBack();
+        navigation.navigate('WorkoutHome');
       }
     } catch (error) {
       console.error('Error fetching workout:', error);
       Alert.alert('Error', 'Failed to fetch workout details');
-      navigation.goBack();
+      navigation.navigate('WorkoutHome');
     } finally {
       setIsLoading(false);
     }
@@ -84,6 +93,7 @@ const WorkoutCompletionScreen = () => {
       <SafeAreaView style={styles.container} edges={['top']}>
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color="#1E4D6B" />
+          <Text style={styles.loadingText}>Loading workout summary...</Text>
         </View>
       </SafeAreaView>
     );
@@ -94,8 +104,11 @@ const WorkoutCompletionScreen = () => {
       <SafeAreaView style={styles.container} edges={['top']}>
         <View style={styles.errorContainer}>
           <Text style={styles.errorText}>Workout not found</Text>
-          <TouchableOpacity onPress={() => navigation.goBack()}>
-            <Text style={styles.backButtonText}>Go Back</Text>
+          <TouchableOpacity 
+            style={styles.doneButton}
+            onPress={() => navigation.navigate('WorkoutHome')}
+          >
+            <Text style={styles.doneButtonText}>Go to Workouts</Text>
           </TouchableOpacity>
         </View>
       </SafeAreaView>
@@ -124,12 +137,6 @@ const WorkoutCompletionScreen = () => {
         }
       >
         <View style={styles.header}>
-          <TouchableOpacity
-            style={styles.backButton}
-            onPress={() => navigation.goBack()}
-          >
-            <Ionicons name="arrow-back" size={24} color="#2C3E50" />
-          </TouchableOpacity>
           <Text style={styles.title}>Workout Complete!</Text>
           <TouchableOpacity
             style={styles.deleteButton}
@@ -173,6 +180,13 @@ const WorkoutCompletionScreen = () => {
             </View>
           ))}
         </View>
+
+        <TouchableOpacity 
+          style={styles.doneButton}
+          onPress={() => navigation.navigate('WorkoutHome')}
+        >
+          <Text style={styles.doneButtonText}>Done</Text>
+        </TouchableOpacity>
       </ScrollView>
     </SafeAreaView>
   );
@@ -207,7 +221,7 @@ const styles = StyleSheet.create({
   },
   header: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
+    justifyContent: 'center',
     alignItems: 'center',
     padding: 16,
     backgroundColor: '#FFFFFF',
@@ -218,6 +232,7 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: '600',
     color: '#2C3E50',
+    textAlign: 'center',
   },
   deleteButton: {
     padding: 8,
@@ -280,6 +295,23 @@ const styles = StyleSheet.create({
   setStatus: {
     width: 24,
     alignItems: 'center',
+  },
+  loadingText: {
+    fontSize: 16,
+    color: '#7F8C8D',
+    marginTop: 16,
+  },
+  doneButton: {
+    backgroundColor: '#1E4D6B',
+    padding: 16,
+    borderRadius: 8,
+    margin: 16,
+    alignItems: 'center',
+  },
+  doneButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '600',
   },
 });
 

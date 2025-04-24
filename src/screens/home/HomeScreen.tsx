@@ -1,31 +1,31 @@
 import React, { useEffect, useState } from 'react';
 import { View, StyleSheet, ScrollView, RefreshControl, Alert, Platform, StatusBar } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { DayStats } from '../types';
-import { FoodEntriesService } from '../services/foodEntries';
-import { StorageService } from '../services/storage';
+import { DayStats } from '../../types';
+import { FoodEntriesService } from '../../services/foodEntries';
+import { StorageService } from '../../services/storage';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { WorkoutEntry, ActiveWorkout } from '../types/workout';
-import Header from '../components/home/Header';
-import GoalsService, { Goal } from '../services/goals';
+import { WorkoutEntry, ActiveWorkout } from '../../types/workout';
+import Header from '../../components/home/Header';
+import GoalsService, { Goal } from '../../services/goals';
 
 // Navigation
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 import type { CompositeNavigationProp } from '@react-navigation/native';
-import type { RootStackParamList } from '../types/navigation';
-import type { MainTabParamList } from '../types/navigation';
+import type { RootStackParamList } from '../../types/navigation';
+import type { MainTabParamList } from '../../types/navigation';
 
 // Components
-import ActiveGoalsSection from '../components/home/ActiveGoalsSection';
-import WeightProgressSection from '../components/home/WeightProgressSection';
-import WorkoutsProgressSection from '../components/home/WorkoutsProgressSection';
-import StatsProgressSection from '../components/home/StatsProgressSection';
-import FoodEntriesProgressSection from '../components/home/FoodEntriesProgressSection';
+import ActiveGoalsSection from '../../components/home/ActiveGoalsSection';
+import WeightProgressSection from '../../components/home/WeightProgressSection';
+import WorkoutsProgressSection from '../../components/home/WorkoutsProgressSection';
+import StatsProgressSection from '../../components/home/StatsProgressSection';
+import FoodEntriesProgressSection from '../../components/home/FoodEntriesProgressSection';
 
 // Types
-import { UserGoals } from '../types/home';
+import { HomeScreenProps } from '../../types/home';
 
 type HomeScreenNavigationProp = CompositeNavigationProp<
   NativeStackNavigationProp<RootStackParamList>,
@@ -42,7 +42,7 @@ const HomeScreen = () => {
     entries: [],
   });
   const [refreshing, setRefreshing] = useState(false);
-  const [goals, setGoals] = useState<UserGoals>({
+  const [goals, setGoals] = useState<HomeScreenProps>({
     calorieGoal: '2000',
     proteinGoal: '150',
     carbsGoal: '200',

@@ -1,27 +1,26 @@
 import React from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
-import { RootStackParamList, MainTabParamList } from './src/types/navigation';
+import { RootStackParamList } from './src/types/navigation';
 import { TouchableOpacity, Text } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 
 // Import screens
-import HomeScreen from './src/screens/HomeScreen';
-import GoalsScreen from './src/screens/GoalsScreen';
+import HomeScreen from './src/screens/home/HomeScreen';
+import GoalsScreen from './src/screens/goals/GoalsScreen';
 import WorkoutStack from './src/navigation/WorkoutStack';
-import FoodEntriesScreen from './src/screens/FoodEntriesScreen';
-import WorkoutDetailsScreen from './src/screens/WorkoutDetailsScreen';
+import FoodEntriesScreen from './src/screens/food/FoodEntriesScreen';
+import WorkoutDetailsScreen from './src/screens/workout/WorkoutDetailsScreen';
 import CameraScreen from './src/screens/CameraScreen';
-import CreateGoalScreen from './src/screens/CreateGoalScreen';
-import GoalDetailsScreen from './src/screens/GoalDetailsScreen';
+import CreateGoalScreen from './src/screens/goals/CreateGoalScreen';
+import GoalDetailsScreen from './src/screens/goals/GoalDetailsScreen';
 import SettingsStack from './src/navigation/SettingsStack';
-import ManualFoodEntryScreen from './src/screens/ManualFoodEntryScreen';
+import ManualFoodEntryScreen from './src/screens/food/ManualFoodEntryScreen';
 import AddWeightScreen from './src/screens/AddWeightScreen';
+import BottomTabNavigator from './src/navigation/BottomTabNavigator';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
-const Tab = createBottomTabNavigator<MainTabParamList>();
 
 const BackButton = () => {
   const navigation = useNavigation();
@@ -36,85 +35,33 @@ const BackButton = () => {
   );
 };
 
-const MainTabs = () => {
-  return (
-    <Tab.Navigator
-      screenOptions={({ route }) => ({
-        tabBarIcon: ({ focused, color, size }) => {
-          let iconName;
-
-          if (route.name === 'Home') {
-            iconName = focused ? 'home' : 'home-outline';
-          } else if (route.name === 'Goals') {
-            iconName = focused ? 'flag' : 'flag-outline';
-          } else if (route.name === 'Workout') {
-            iconName = focused ? 'fitness' : 'fitness-outline';
-          } else if (route.name === 'FoodEntries') {
-            iconName = focused ? 'restaurant' : 'restaurant-outline';
-          } else if (route.name === 'Settings') {
-            iconName = focused ? 'settings' : 'settings-outline';
-          }
-
-          return <Ionicons name={iconName as any} size={size} color={color} />;
-        },
-        tabBarActiveTintColor: '#1E4D6B',
-        tabBarInactiveTintColor: 'gray',
-        headerShown: false,
-      })}
-    >
-      <Tab.Screen name="Home" component={HomeScreen} />
-      <Tab.Screen name="Goals" component={GoalsScreen} />
-      <Tab.Screen name="Workout" component={WorkoutStack} />
-      <Tab.Screen name="FoodEntries" component={FoodEntriesScreen} />
-      <Tab.Screen name="Settings" component={SettingsStack} />
-    </Tab.Navigator>
-  );
-};
-
 export default function App() {
   return (
     <NavigationContainer>
       <Stack.Navigator
         screenOptions={{
-          headerShown: false,
+          headerLeft: () => <BackButton />,
         }}
       >
-        <Stack.Screen name="MainTabs" component={MainTabs} />
         <Stack.Screen 
-          name="WorkoutDetails" 
-          component={WorkoutDetailsScreen}
-          options={{
-            headerShown: false,
-          }}
-        />
-        <Stack.Screen name="Camera" component={CameraScreen} />
-        <Stack.Screen 
-          name="CreateGoal" 
-          component={CreateGoalScreen}
-          options={{
-            headerShown: false,
-          }}
+          name="MainTabs" 
+          component={BottomTabNavigator} 
+          options={{ headerShown: false }}
         />
         <Stack.Screen 
-          name="GoalDetails" 
-          component={GoalDetailsScreen}
-          options={{
-            headerShown: true,
-            title: '',
-            headerStyle: {
-              backgroundColor: '#F5F5F0',
-            },
-            headerShadowVisible: false,
-            headerLeft: () => <BackButton />,
-          }}
+          name="Camera" 
+          component={CameraScreen}
+          options={{ headerShown: false }}
         />
-        <Stack.Screen name="ManualFoodEntry" component={ManualFoodEntryScreen} />
+        <Stack.Screen 
+          name="ManualFoodEntry" 
+          component={ManualFoodEntryScreen}
+          options={{ title: 'Add Food' }}
+        />
         <Stack.Screen 
           name="AddWeight" 
           component={AddWeightScreen}
-          options={{
-            headerShown: false,
-          }}
+          options={{ title: 'Add Weight' }}
         />
       </Stack.Navigator>
     </NavigationContainer>

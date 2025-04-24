@@ -6,18 +6,20 @@ import {
   StatusBar,
   TouchableOpacity,
   Text,
+  ScrollView,
+  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import WorkoutHeaderTabs from '../components/workout/WorkoutHeaderTabs';
-import WorkoutListView from '../components/workout/WorkoutListView';
-import WorkoutTemplateEditor from '../components/workout/WorkoutTemplateEditor';
-import { WorkoutStackParamList } from '../navigation/WorkoutStack';
-import { WorkoutTemplate, ActiveWorkout } from '../types/workout';
-import { StorageService } from '../services/storage';
-import { showActionSheet } from '../utils/ActionSheet';
+import { WorkoutStackParamList } from '../../navigation/WorkoutStack';
+import { WorkoutTemplate, ActiveWorkout } from '../../types/workout';
+import { StorageService } from '../../services/storage';
+import { showActionSheet } from '../../utils/ActionSheet';
+import WorkoutHeaderTabs from '../../components/workout/WorkoutHeaderTabs';
+import WorkoutListView from '../../components/workout/WorkoutListView';
+import WorkoutTemplateEditor from '../../components/workout/WorkoutTemplateEditor';
 
 type TabType = 'templates' | 'workouts';
 type WorkoutScreenNavigationProp = NativeStackNavigationProp<WorkoutStackParamList>;

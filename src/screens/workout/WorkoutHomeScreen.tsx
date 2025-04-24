@@ -1,14 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, RefreshControl } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, RefreshControl, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { WorkoutTemplate, ActiveWorkout } from '../types/workout';
-import { StorageService } from '../services/storage';
+import { WorkoutTemplate, ActiveWorkout } from '../../types/workout';
+import { StorageService } from '../../services/storage';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { WorkoutStackParamList } from '../navigation/WorkoutStack';
-import WorkoutTemplateEditor from '../components/workout/WorkoutTemplateEditor';
+import { WorkoutStackParamList } from '../../navigation/WorkoutStack';
+import WorkoutTemplateEditor from '../../components/workout/WorkoutTemplateEditor';
 
 type WorkoutScreenNavigationProp = NativeStackNavigationProp<WorkoutStackParamList>;
 

@@ -3,9 +3,9 @@ import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, Platform }
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
-import { FoodEntriesService } from '../services/foodEntries';
-import TimePickerModal from '../components/food/TimePickerModal';
-import FoodEntryForm from '../components/food/FoodEntryForm';
+import { FoodEntriesService } from '../../services/foodEntries';
+import TimePickerModal from '../../components/food/TimePickerModal';
+import FoodEntryForm from '../../components/food/FoodEntryForm';
 
 const ManualFoodEntryScreen = () => {
   const navigation = useNavigation();

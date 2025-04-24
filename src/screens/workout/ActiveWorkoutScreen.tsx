@@ -1,14 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useRoute } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { ActiveWorkout } from '../types/workout';
-import { StorageService } from '../services/storage';
-import WorkoutHeader from '../components/workout/WorkoutHeader';
-import ExerciseCard from '../components/workout/ExerciseCard';
-import { WorkoutStackParamList } from '../navigation/WorkoutStack';
+import { ActiveWorkout } from '../../types/workout';
+import { StorageService } from '../../services/storage';
+import WorkoutHeader from '../../components/workout/WorkoutHeader';
+import ExerciseCard from '../../components/workout/ExerciseCard';
+import { WorkoutStackParamList } from '../../navigation/WorkoutStack';
 
 type WorkoutScreenNavigationProp = NativeStackNavigationProp<WorkoutStackParamList>;
 
@@ -65,18 +65,21 @@ const ActiveWorkoutScreen = () => {
           status: 'completed' as const,
         };
         
-        // Save the completed workout
+        // Save the completed workout first
         await StorageService.saveCompletedWorkout(completedWorkout);
         
         // Clear the active workout
         await StorageService.clearActiveWorkout();
         setWorkout(null);
         
-        // Navigate to completion screen
-        navigation.navigate('WorkoutCompletion', { workoutId: completedWorkout.id });
+        // Navigate to completion screen with the workout ID
+        navigation.navigate('WorkoutCompletion', { 
+          workoutId: completedWorkout.id 
+        });
       }
     } catch (error) {
       console.error('Error finishing workout:', error);
+      Alert.alert('Error', 'Failed to complete workout. Please try again.');
     }
   };
 
