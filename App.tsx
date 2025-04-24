@@ -12,7 +12,7 @@ import GoalsScreen from './src/screens/goals/GoalsScreen';
 import WorkoutStack from './src/navigation/WorkoutStack';
 import FoodEntriesScreen from './src/screens/food/FoodEntriesScreen';
 import WorkoutDetailsScreen from './src/screens/workout/WorkoutDetailsScreen';
-import CameraScreen from './src/screens/CameraScreen';
+import CameraScreen from './src/screens/camera/CameraScreen';
 import CreateGoalScreen from './src/screens/goals/CreateGoalScreen';
 import GoalDetailsScreen from './src/screens/goals/GoalDetailsScreen';
 import SettingsStack from './src/navigation/SettingsStack';

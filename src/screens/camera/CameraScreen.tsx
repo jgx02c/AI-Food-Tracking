@@ -30,4 +30,6 @@ const CameraScreen = () => {
   }, []);
 
   // ... existing code ...
-} 
+}
+
+export default CameraScreen; 
