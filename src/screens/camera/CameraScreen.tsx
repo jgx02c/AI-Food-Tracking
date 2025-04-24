@@ -1,7 +1,6 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useRef } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Alert } from 'react-native';
-import { Camera, CameraType } from 'expo-camera';
-import type { CameraCapturedPicture } from 'expo-camera';
+import { CameraView, useCameraPermissions } from 'expo-camera';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
@@ -12,14 +11,11 @@ type CameraScreenNavigationProp = NativeStackNavigationProp<FoodStackParamList>;
 
 const CameraScreen = () => {
   const navigation = useNavigation<CameraScreenNavigationProp>();
-  const [hasPermission, setHasPermission] = useState<boolean | null>(null);
-  const cameraRef = useRef<Camera>(null);
+  const [permission, requestPermission] = useCameraPermissions();
+  const cameraRef = useRef<CameraView>(null);
 
-  useEffect(() => {
-    (async () => {
-      const { status } = await Camera.requestCameraPermissionsAsync();
-      setHasPermission(status === 'granted');
-    })();
+  React.useEffect(() => {
+    requestPermission();
   }, []);
 
   const handleTakePhoto = async () => {
@@ -41,7 +37,7 @@ const CameraScreen = () => {
     }
   };
 
-  if (hasPermission === null) {
+  if (!permission) {
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.permissionContainer}>
@@ -51,7 +47,7 @@ const CameraScreen = () => {
     );
   }
 
-  if (hasPermission === false) {
+  if (!permission.granted) {
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.permissionContainer}>
@@ -60,10 +56,7 @@ const CameraScreen = () => {
           </Text>
           <TouchableOpacity
             style={styles.permissionButton}
-            onPress={async () => {
-              const { status } = await Camera.requestCameraPermissionsAsync();
-              setHasPermission(status === 'granted');
-            }}
+            onPress={requestPermission}
           >
             <Text style={styles.permissionButtonText}>Grant Permission</Text>
           </TouchableOpacity>
@@ -74,10 +67,10 @@ const CameraScreen = () => {
 
   return (
     <SafeAreaView style={styles.container}>
-      <Camera
+      <CameraView
         ref={cameraRef}
         style={styles.camera}
-        type={CameraType.back}
+        facing="back"
       >
         <View style={styles.header}>
           <TouchableOpacity
@@ -95,7 +88,7 @@ const CameraScreen = () => {
             <View style={styles.captureButtonInner} />
           </TouchableOpacity>
         </View>
-      </Camera>
+      </CameraView>
     </SafeAreaView>
   );
 };
