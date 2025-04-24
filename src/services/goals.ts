@@ -2,21 +2,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { StorageService } from './storage';
 import { FoodEntry } from './storage';
 import { WorkoutSession } from '../types/workout';
-import { GoalType } from '../types/goals';
-
-export interface Goal {
-  id: string;
-  title: string;
-  type: GoalType;
-  target: number;
-  current: number;
-  startDate: string;
-  endDate: string;
-  unit: string;
-  frequency: 'daily' | 'weekly' | 'monthly';
-  category: 'maintenance' | 'improvement';
-  isActive: boolean;
-}
+import { GoalType, Goal, UserGoals } from '../types/goals';
 
 const GOALS_KEY = '@goals';
 

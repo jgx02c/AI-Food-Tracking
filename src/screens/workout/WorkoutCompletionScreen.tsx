@@ -23,16 +23,16 @@ const WorkoutCompletionScreen = () => {
   const fetchWorkout = async () => {
     try {
       setIsLoading(true);
+      console.log('Fetching workout with ID:', workoutId);
       const completedWorkouts = await StorageService.getCompletedWorkouts();
+      console.log('Completed workouts:', completedWorkouts);
       const foundWorkout = completedWorkouts.find(w => w.id === workoutId);
+      console.log('Found workout:', foundWorkout);
 
       if (foundWorkout) {
-        // Convert string dates back to Date objects
-        foundWorkout.startTime = new Date(foundWorkout.startTime);
-        if (foundWorkout.endTime) {
-          foundWorkout.endTime = new Date(foundWorkout.endTime);
-        }
+        // Dates are now handled by the storage service
         setWorkout(foundWorkout);
+        console.log('Set workout state:', foundWorkout);
       } else {
         console.error('Workout not found:', workoutId);
         Alert.alert(
@@ -126,6 +126,28 @@ const WorkoutCompletionScreen = () => {
     );
   }
 
+  // Add validation for required workout data
+  if (!workout.exercises || !workout.startTime || !workout.template) {
+    return (
+      <SafeAreaView style={styles.container} edges={['top']}>
+        <View style={styles.errorContainer}>
+          <Text style={styles.errorText}>Invalid workout data</Text>
+          <Text style={styles.errorDetails}>
+            {!workout.exercises ? 'Missing exercises data. ' : ''}
+            {!workout.startTime ? 'Missing start time. ' : ''}
+            {!workout.template ? 'Missing template data. ' : ''}
+          </Text>
+          <TouchableOpacity 
+            style={styles.doneButton}
+            onPress={() => navigation.replace('WorkoutHome')}
+          >
+            <Text style={styles.doneButtonText}>Go to Workouts</Text>
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       <ScrollView
@@ -182,6 +204,10 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#E74C3C',
     marginBottom: 16,
+  },
+  errorDetails: {
+    fontSize: 14,
+    color: '#7F8C8D',
   },
   header: {
     flexDirection: 'row',

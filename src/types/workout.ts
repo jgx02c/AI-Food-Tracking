@@ -42,12 +42,12 @@ export interface ExerciseSet {
 
 export interface WorkoutSet {
   reps: number;
-  weight?: number; // Target weight
-  actualWeight?: number; // Actual weight used
-  actualReps?: number; // Actual reps performed
+  weight?: number;
+  actualWeight?: number;
+  actualReps?: number;
   completed: boolean;
-  isFailure?: boolean; // Whether the set was completed to failure
-  notes?: string; // Optional notes about the set
+  isFailure?: boolean;
+  notes?: string;
 }
 
 export interface WorkoutExercise {
@@ -61,26 +61,19 @@ export interface WorkoutExercise {
   notes?: string;
 }
 
-export interface WorkoutTemplate {
-  id: string;
-  name: string;
-  exercises: WorkoutExercise[];
-  calories: number;
-}
-
-export interface CompletedSet {
-  reps: number;
-  weight?: number;
-  actualWeight?: number;
-  actualReps?: number;
-  completed: boolean;
-  isFailure?: boolean;
-}
+export interface CompletedSet extends WorkoutSet {}
 
 export interface CompletedExercise {
   exerciseId: string;
   name: string;
   sets: CompletedSet[];
+}
+
+export interface WorkoutTemplate {
+  id: string;
+  name: string;
+  exercises: WorkoutExercise[];
+  calories: number;
 }
 
 export interface ActiveWorkout {
@@ -102,12 +95,6 @@ export interface WorkoutSession {
   duration: number;
 }
 
-export interface UserSettings {
-  dailyCalorieGoal: number;
-  dailyProteinGoal: number;
-  weightGoal: number;
-}
-
 export interface WorkoutEntry {
   date: string;
   name: string;
@@ -115,4 +102,13 @@ export interface WorkoutEntry {
   calories: number;
   type: 'workout';
   totalWeight: number;
+}
+
+// Navigation Types
+export interface WorkoutStackParamList {
+  WorkoutHome: undefined;
+  WorkoutTemplate: { templateId?: string };
+  ActiveWorkout: { workoutId: string };
+  WorkoutCompletion: { workoutId: string };
+  WorkoutDetails: { workoutId: string };
 } 

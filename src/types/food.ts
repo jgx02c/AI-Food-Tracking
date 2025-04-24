@@ -1,20 +1,35 @@
 export interface Nutrients {
+  calories: number;
   protein: number;
   carbs: number;
   fat: number;
-  fiber: number;
 }
 
-export type MealType = 'breakfast' | 'lunch' | 'dinner' | 'snack';
-
-export interface FoodEntry {
+export interface FoodEntry extends Nutrients {
   id: string;
-  timestamp: number;
-  imageUrl: string;
-  description: string;
-  calories: number;
+  name: string;
+  date: string;
+  imageUrl?: string;
+  mealType?: 'breakfast' | 'lunch' | 'dinner' | 'snack';
+  notes?: string;
+}
+
+export interface FoodPrediction {
+  name: string;
+  confidence: number;
   nutrients: Nutrients;
-  servingSize: string;
-  mealType: MealType;
-  userId?: string;
+}
+
+export interface FoodAnalysisResult {
+  predictions: FoodPrediction[];
+  imageUrl?: string;
+}
+
+export interface FoodHistoryEntry extends FoodEntry {
+  timestamp: number;
+}
+
+export interface DailyNutrients extends Nutrients {
+  date: string;
+  entries: FoodEntry[];
 } 

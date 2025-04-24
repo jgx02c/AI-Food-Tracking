@@ -1,36 +1,67 @@
-import { Goal } from '../services/goals';
+export interface UserGoals {
+  weight: string;
+  targetWeight: string;
+  calorieGoal: string;
+  proteinGoal: string;
+  carbsGoal: string;
+  fatGoal: string;
+}
 
 export type GoalType = 'weight' | 'bulk' | 'cut' | 'food' | 'workout';
+
+export interface Goal {
+  id: string;
+  type: GoalType;
+  name: string;
+  target: number;
+  current: number;
+  startDate: string;
+  endDate: string;
+  isActive: boolean;
+  notes?: string;
+  unit?: string;
+  frequency?: 'daily' | 'weekly' | 'monthly';
+  category?: 'maintenance' | 'improvement';
+}
+
+export interface GoalProgress {
+  goalId: string;
+  date: string;
+  value: number;
+}
 
 export interface GoalCardProps {
   goal: Goal;
   onPress: (goalId: string) => void;
+  onDelete?: (goalId: string) => void;
 }
 
 export interface GoalListProps {
   goals: Goal[];
   onGoalPress: (goalId: string) => void;
+  onGoalDelete?: (goalId: string) => void;
 }
 
 export interface GoalFormData {
-  title: string;
   type: GoalType;
-  target: string;
+  name: string;
+  target: number;
   startDate: string;
   endDate: string;
-  unit: string;
-  frequency: 'daily' | 'weekly' | 'monthly';
-  category: 'maintenance' | 'improvement';
+  notes?: string;
+  unit?: string;
+  frequency?: 'daily' | 'weekly' | 'monthly';
+  category?: 'maintenance' | 'improvement';
 }
 
 export interface GoalFormProps {
   onSubmit: (data: GoalFormData) => void;
   initialData?: Partial<GoalFormData>;
-  isEditing?: boolean;
 }
 
 export interface GoalDetailsProps {
   goal: Goal;
-  onUpdate: (goalId: string, data: Partial<GoalFormData>) => void;
-  onDelete: (goalId: string) => void;
+  progress: GoalProgress[];
+  onEdit: () => void;
+  onDelete: () => void;
 } 

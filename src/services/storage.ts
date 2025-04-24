@@ -6,42 +6,29 @@ import {
   WorkoutExercise,
   CompletedSet,
   WorkoutSession,
-  UserSettings,
   WorkoutEntry
 } from '../types/workout';
+import { UserSettings, UserProfile } from '../types/settings';
+import { FoodEntry } from '../types/food';
+import { Goal } from '../types/goals';
 
 const TEMPLATES_KEY = 'workoutTemplates';
 const COMPLETED_WORKOUTS_KEY = 'completedWorkouts';
 const ACTIVE_WORKOUT_KEY = 'activeWorkout';
+const USER_SETTINGS_KEY = 'user_settings';
+const USER_PROFILE_KEY = 'user_profile';
+const FOOD_HISTORY_KEY = 'food_history';
+const GOALS_KEY = 'goals';
 
 const STORAGE_KEYS = {
   WORKOUT_TEMPLATES: TEMPLATES_KEY,
   ACTIVE_WORKOUT: ACTIVE_WORKOUT_KEY,
   COMPLETED_WORKOUTS: COMPLETED_WORKOUTS_KEY,
   PICLIST_KEY: 'piclist_key',
-  FOOD_HISTORY: 'food_history',
-  USER_GOALS: 'user_goals',
+  FOOD_HISTORY: FOOD_HISTORY_KEY,
+  USER_GOALS: GOALS_KEY,
 };
 
-interface UserGoals {
-  weight: string;
-  targetWeight: string;
-  calorieGoal: string;
-  proteinGoal: string;
-  carbsGoal: string;
-  fatGoal: string;
-}
-
-export interface FoodEntry {
-  id: string;
-  name: string;
-  calories: number;
-  protein: number;
-  carbs: number;
-  fat: number;
-  date: string;
-  imageUrl?: string;
-}
 
 export class StorageService {
   static async getWorkoutTemplates(): Promise<WorkoutTemplate[]> {
@@ -93,7 +80,14 @@ export class StorageService {
   static async getCompletedWorkouts(): Promise<ActiveWorkout[]> {
     try {
       const workouts = await AsyncStorage.getItem(COMPLETED_WORKOUTS_KEY);
-      return workouts ? JSON.parse(workouts) : [];
+      if (!workouts) return [];
+      
+      const parsedWorkouts = JSON.parse(workouts);
+      return parsedWorkouts.map((workout: ActiveWorkout) => ({
+        ...workout,
+        startTime: new Date(workout.startTime),
+        endTime: workout.endTime ? new Date(workout.endTime) : undefined
+      }));
     } catch (error) {
       console.error('Error getting completed workouts:', error);
       return [];
@@ -275,7 +269,7 @@ export class StorageService {
   // User Settings
   static async getUserSettings(): Promise<UserSettings | null> {
     try {
-      const data = await AsyncStorage.getItem(STORAGE_KEYS.FOOD_HISTORY);
+      const data = await AsyncStorage.getItem(USER_SETTINGS_KEY);
       return data ? JSON.parse(data) : null;
     } catch (error) {
       console.error('Error getting user settings:', error);
@@ -285,9 +279,27 @@ export class StorageService {
 
   static async saveUserSettings(settings: UserSettings): Promise<void> {
     try {
-      await AsyncStorage.setItem(STORAGE_KEYS.FOOD_HISTORY, JSON.stringify(settings));
+      await AsyncStorage.setItem(USER_SETTINGS_KEY, JSON.stringify(settings));
     } catch (error) {
       console.error('Error saving user settings:', error);
+    }
+  }
+
+  static async getUserProfile(): Promise<UserProfile | null> {
+    try {
+      const data = await AsyncStorage.getItem(USER_PROFILE_KEY);
+      return data ? JSON.parse(data) : null;
+    } catch (error) {
+      console.error('Error getting user profile:', error);
+      return null;
+    }
+  }
+
+  static async saveUserProfile(profile: UserProfile): Promise<void> {
+    try {
+      await AsyncStorage.setItem(USER_PROFILE_KEY, JSON.stringify(profile));
+    } catch (error) {
+      console.error('Error saving user profile:', error);
     }
   }
 
